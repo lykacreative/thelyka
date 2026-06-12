@@ -18,7 +18,7 @@ export function CategoryCard({ item, onOpen }: CategoryCardProps) {
       className="group block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
       aria-label={`Open ${item.title}`}
     >
-      <span className="relative block aspect-[4/3] w-full overflow-hidden bg-transparent transition duration-300 group-hover:opacity-90">
+      <span className="relative block aspect-[4/3] w-full overflow-hidden bg-[var(--page-fg)] transition duration-300 group-hover:opacity-90">
         <Image
           src={item.src}
           alt={`${item.title} by lyka mimics`}

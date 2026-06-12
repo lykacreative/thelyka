@@ -3,7 +3,6 @@
 import { animate, motion, useAnimationFrame, useMotionValue, useReducedMotion } from "framer-motion";
 import Link from "next/link";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { FaArrowUpRightFromSquare } from "react-icons/fa6";
 import { CategoryCard } from "@/components/CategoryCard";
 import { Lightbox } from "@/components/Lightbox";
 import { categoryLabels } from "@/lib/copy";
@@ -114,9 +113,18 @@ export function CategoryScroller({ category, items, direction }: CategoryScrolle
         aria-label={`Open ${categoryLabels[category]} gallery`}
       >
         <span>{categoryLabels[category]}</span>
-        <span className="inline-flex h-3.5 w-3.5 items-center justify-center transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 sm:h-7 sm:w-7">
-          <FaArrowUpRightFromSquare aria-hidden="true" className="h-2.5 w-2.5 sm:h-5 sm:w-5" />
-        </span>
+        <svg
+          aria-hidden="true"
+          className="h-3 w-3 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 sm:h-5 sm:w-5"
+          viewBox="0 0 20 20"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M5 15L15 5M15 5H8M15 5v7" />
+        </svg>
       </Link>
 
       <div
@@ -126,7 +134,7 @@ export function CategoryScroller({ category, items, direction }: CategoryScrolle
       >
         <motion.div
           ref={trackRef}
-          className="space-y-[3px] bg-[var(--frame)] will-change-transform sm:space-y-[7px]"
+          className="space-y-[3px] bg-[var(--page-fg)] will-change-transform sm:space-y-[7px]"
           style={{ y }}
         >
           {repeatedItems.map((item, index) => (
