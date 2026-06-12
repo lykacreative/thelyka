@@ -1,3 +1,3 @@
 # Lyka's Portfolio
 
-Hey, this is my portfolio
+Hey, this is my portfolio.
