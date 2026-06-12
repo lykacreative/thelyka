@@ -33,12 +33,8 @@ export const metadata: Metadata = {
     description: 'hey i am lyka and this is my portfolio',
   },
   icons: {
-    icon: [
-      { url: "/assets/favicon-16x16.png", sizes: "16x16", type: "image/png" },
-      { url: "/assets/favicon-32x32.png", sizes: "32x32", type: "image/png" }
-    ],
-    shortcut: "/assets/favicon.ico",
-    apple: "/assets/apple-icon.png"
+    icon: "/assets/favicon.svg",
+    apple: "/assets/favicon.svg"
   },
   robots: {
     index: true,

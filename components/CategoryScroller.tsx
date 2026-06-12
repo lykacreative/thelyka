@@ -128,7 +128,7 @@ export function CategoryScroller({ category, items, direction }: CategoryScrolle
       </Link>
 
       <div
-        className="h-[clamp(240px,38vh,340px)] overflow-hidden border-x-[5px] border-[var(--frame)] bg-[var(--page-bg-solid)] sm:h-[clamp(360px,54vh,500px)] sm:border-x-[7px]"
+        className="h-[clamp(240px,38vh,340px)] overflow-hidden border-x-[5px] border-[var(--page-fg)] bg-[var(--page-bg-solid)] sm:h-[clamp(360px,54vh,500px)] sm:border-x-[7px]"
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
       >
