@@ -1,0 +1,497 @@
+"use client";
+
+import { useEffect, useState, type FormEvent } from "react";
+import { FaPenToSquare, FaPlus, FaTrashCan } from "react-icons/fa6";
+import { BlogRenderer } from "@/components/BlogRenderer";
+
+type BlogImage = {
+  src: string;
+  year: string;
+  slug: string;
+  filename: string;
+};
+
+type ExistingPost = {
+  slug: string;
+  year: string;
+  title: string;
+  date: string;
+  excerpt: string;
+  cover: string;
+  content: string;
+  images: string[];
+};
+
+type BlogEditorProps = {
+  allImages: BlogImage[];
+  years: string[];
+};
+
+type Status =
+  | { kind: "idle" }
+  | { kind: "saving" }
+  | { kind: "deleting" }
+  | { kind: "success"; message: string }
+  | { kind: "error"; message: string };
+
+const emptyForm = {
+  title: "",
+  slug: "",
+  date: new Date().toISOString().slice(0, 10),
+  excerpt: "",
+  content: "",
+  year: new Date().getFullYear().toString(),
+  cover: ""
+};
+
+function slugFromTitle(title: string) {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function todayYear() {
+  return new Date().getFullYear().toString();
+}
+
+export function BlogEditor({ allImages, years }: BlogEditorProps) {
+  const [form, setForm] = useState({ ...emptyForm });
+  const [status, setStatus] = useState<Status>({ kind: "idle" });
+  const [preview, setPreview] = useState(true);
+  const [imageFilter, setImageFilter] = useState<string>("all");
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
+
+  const [existingPosts, setExistingPosts] = useState<ExistingPost[]>([]);
+  const [loadingPosts, setLoadingPosts] = useState(true);
+  const [editingSlug, setEditingSlug] = useState<string | null>(null);
+
+  const yearOptions = (() => {
+    const set = new Set<string>(years);
+    set.add(todayYear());
+    return Array.from(set).sort((a, b) => b.localeCompare(a));
+  })();
+
+  const filteredImages = imageFilter === "all" ? allImages : allImages.filter((img) => img.year === imageFilter);
+
+  async function fetchPosts() {
+    setLoadingPosts(true);
+    try {
+      const res = await fetch("/api/blogs");
+      const data = (await res.json()) as { posts?: ExistingPost[] };
+      setExistingPosts(data.posts ?? []);
+    } catch {
+      // ignore
+    }
+    setLoadingPosts(false);
+  }
+
+  useEffect(() => {
+    fetchPosts();
+  }, []);
+
+  function loadPost(post: ExistingPost) {
+    setForm({
+      title: post.title,
+      slug: post.slug,
+      date: post.date,
+      excerpt: post.excerpt,
+      content: post.content,
+      year: post.year,
+      cover: post.cover
+    });
+    setEditingSlug(post.slug);
+    setSlugManuallyEdited(true);
+    setStatus({ kind: "idle" });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function newPost() {
+    setForm({ ...emptyForm });
+    setEditingSlug(null);
+    setSlugManuallyEdited(false);
+    setStatus({ kind: "idle" });
+  }
+
+  function insertImage(src: string) {
+    const markdown = `![image](${src})`;
+    setForm((prev) => ({ ...prev, content: prev.content + (prev.content ? "\n\n" : "") + markdown }));
+  }
+
+  function handleTitleChange(value: string) {
+    setForm((prev) => ({
+      ...prev,
+      title: value,
+      slug: slugManuallyEdited ? prev.slug : slugFromTitle(value)
+    }));
+  }
+
+  async function handleSave(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!form.title.trim() || !form.slug.trim() || !form.content.trim()) {
+      setStatus({ kind: "error", message: "Title, slug, and content are required." });
+      return;
+    }
+
+    setStatus({ kind: "saving" });
+    try {
+      const response = await fetch("/api/blogs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slug: form.slug.trim(),
+          title: form.title.trim(),
+          date: form.date.trim(),
+          excerpt: form.excerpt.trim(),
+          content: form.content,
+          year: form.year.trim() || todayYear(),
+          cover: form.cover.trim() || undefined
+        })
+      });
+      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+      if (!response.ok) {
+        setStatus({ kind: "error", message: payload.error ?? "Save failed." });
+        return;
+      }
+      setStatus({ kind: "success", message: "Blog post saved." });
+      setEditingSlug(form.slug.trim());
+      fetchPosts();
+    } catch (error) {
+      setStatus({ kind: "error", message: error instanceof Error ? error.message : "Save failed." });
+    }
+  }
+
+  async function handleDelete() {
+    if (!form.slug.trim()) {
+      setStatus({ kind: "error", message: "Enter a slug to delete." });
+      return;
+    }
+    setStatus({ kind: "deleting" });
+    try {
+      const response = await fetch("/api/blogs", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: form.slug.trim(), year: form.year.trim() || todayYear() })
+      });
+      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+      if (!response.ok) {
+        setStatus({ kind: "error", message: payload.error ?? "Delete failed." });
+        return;
+      }
+      setStatus({ kind: "success", message: "Blog post deleted." });
+      setForm({ ...emptyForm });
+      setEditingSlug(null);
+      fetchPosts();
+    } catch (error) {
+      setStatus({ kind: "error", message: error instanceof Error ? error.message : "Delete failed." });
+    }
+  }
+
+  return (
+    <div className="space-y-8">
+      {/* ── Existing posts ── */}
+      <section className="border border-[var(--frame)] bg-[var(--modal-bg)] p-5 text-[var(--modal-fg)]">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="font-display text-xl font-normal tracking-normal">Existing posts</h3>
+          <button
+            type="button"
+            onClick={newPost}
+            className="inline-flex items-center gap-1.5 border border-[var(--frame)] bg-[var(--panel-bg)] px-3 py-1 font-sans text-[11px] font-medium uppercase tracking-normal text-[var(--panel-fg)] transition hover:opacity-90"
+          >
+            <FaPlus aria-hidden="true" className="h-2.5 w-2.5" />
+            New post
+          </button>
+        </div>
+
+        {loadingPosts ? (
+          <p className="font-sans text-sm text-[var(--modal-fg)]/50">Loading…</p>
+        ) : existingPosts.length === 0 ? (
+          <p className="font-sans text-sm text-[var(--modal-fg)]/50">
+            No posts yet. Create your first one above.
+          </p>
+        ) : (
+          <ul className="grid max-h-[260px] gap-2 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3">
+            {existingPosts.map((post) => (
+              <li
+                key={`${post.year}-${post.slug}`}
+                className={`flex items-start justify-between gap-2 border p-3 transition ${
+                  editingSlug === post.slug
+                    ? "border-[var(--frame)] bg-[var(--panel-bg)] text-[var(--panel-fg)]"
+                    : "border-[var(--frame)]/40 bg-[var(--page-bg-solid)] text-[var(--page-fg)] hover:border-[var(--frame)]"
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={() => loadPost(post)}
+                  className="min-w-0 flex-1 text-left"
+                >
+                  <span className="block truncate font-display text-sm font-normal tracking-normal">
+                    {post.title}
+                  </span>
+                  <span className="mt-0.5 block font-sans text-[10px] uppercase tracking-normal opacity-60">
+                    {post.year} · {post.date}
+                    {post.excerpt ? ` · ${post.excerpt.slice(0, 30)}${post.excerpt.length > 30 ? "…" : ""}` : ""}
+                  </span>
+                </button>
+                <span
+                  className="mt-0.5 flex shrink-0 items-center gap-1"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    type="button"
+                    onClick={() => loadPost(post)}
+                    className="grid h-6 w-6 place-items-center rounded transition hover:bg-[var(--panel-bg)] hover:text-[var(--panel-fg)]"
+                    aria-label={`Edit ${post.title}`}
+                  >
+                    <FaPenToSquare aria-hidden="true" className="h-3 w-3" />
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* ── Toolbar ── */}
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setPreview(!preview)}
+          className="border border-[var(--frame)] bg-[var(--panel-bg)] px-4 py-1.5 font-sans text-xs font-medium uppercase tracking-normal text-[var(--panel-fg)] transition hover:opacity-90"
+        >
+          {preview ? "Hide preview" : "Show preview"}
+        </button>
+        {editingSlug ? (
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={status.kind === "deleting"}
+            className="border border-[var(--frame)] bg-transparent px-4 py-1.5 font-sans text-xs font-medium uppercase tracking-normal text-rose-700 transition hover:bg-rose-700 hover:text-white disabled:opacity-60"
+          >
+            {status.kind === "deleting" ? "Deleting…" : "Delete post"}
+          </button>
+        ) : null}
+        {status.kind === "success" ? (
+          <span className="font-sans text-xs tracking-normal text-emerald-700 dark:text-emerald-300">{status.message}</span>
+        ) : null}
+        {status.kind === "error" ? (
+          <span className="font-sans text-xs tracking-normal text-rose-700 dark:text-rose-300">{status.message}</span>
+        ) : null}
+      </div>
+
+      {/* ── Editor + Preview ── */}
+      <div className={`grid gap-6 ${preview ? "lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]" : ""}`}>
+        <form onSubmit={handleSave} className="space-y-4 border border-[var(--frame)] bg-[var(--modal-bg)] p-5 text-[var(--modal-fg)]">
+          <h3 className="font-display text-xl font-normal tracking-normal">
+            {editingSlug ? "Edit post" : "New post"}
+          </h3>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block">
+              <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">Title</span>
+              <input
+                type="text"
+                value={form.title}
+                onChange={(event) => handleTitleChange(event.target.value)}
+                placeholder="My awesome post"
+                className="w-full border border-[var(--frame)] bg-[var(--page-bg-solid)] px-3 py-2 font-display text-base tracking-normal text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
+                required
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">Slug</span>
+              <input
+                type="text"
+                value={form.slug}
+                onChange={(event) => {
+                  setSlugManuallyEdited(true);
+                  setForm({ ...form, slug: event.target.value });
+                }}
+                placeholder="my-awesome-post"
+                className="w-full border border-[var(--frame)] bg-[var(--page-bg-solid)] px-3 py-2 font-display text-base tracking-normal text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
+                required
+              />
+            </label>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <label className="block">
+              <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">Date</span>
+              <input
+                type="date"
+                value={form.date}
+                onChange={(event) => setForm({ ...form, date: event.target.value })}
+                className="w-full border border-[var(--frame)] bg-[var(--page-bg-solid)] px-3 py-2 font-display text-base tracking-normal text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">Year folder</span>
+              <select
+                value={form.year}
+                onChange={(event) => setForm({ ...form, year: event.target.value })}
+                className="w-full border border-[var(--frame)] bg-[var(--page-bg-solid)] px-3 py-2 font-display text-base tracking-normal text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
+              >
+                {yearOptions.map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">Cover image</span>
+              <input
+                type="text"
+                value={form.cover}
+                onChange={(event) => setForm({ ...form, cover: event.target.value })}
+                placeholder="cover.jpg"
+                className="w-full border border-[var(--frame)] bg-[var(--page-bg-solid)] px-3 py-2 font-display text-base tracking-normal text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
+              />
+            </label>
+          </div>
+
+          <label className="block">
+            <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">Excerpt</span>
+            <input
+              type="text"
+              value={form.excerpt}
+              onChange={(event) => setForm({ ...form, excerpt: event.target.value })}
+              placeholder="A short summary shown on the listing page."
+              className="w-full border border-[var(--frame)] bg-[var(--page-bg-solid)] px-3 py-2 font-display text-base tracking-normal text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
+            />
+          </label>
+
+          <label className="block">
+            <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">Content (Markdown)</span>
+            <textarea
+              value={form.content}
+              onChange={(event) => setForm({ ...form, content: event.target.value })}
+              rows={16}
+              placeholder="Write your blog post in markdown here. Use ![image](/blogs/2025/my-post/image.jpg) to include images."
+              className="w-full resize-y border border-[var(--frame)] bg-[var(--page-bg-solid)] px-3 py-2 font-mono text-sm tracking-normal text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
+              required
+            />
+          </label>
+
+          <button
+            type="submit"
+            disabled={status.kind === "saving"}
+            className="w-full border border-[var(--frame)] bg-[var(--panel-bg)] px-5 py-2 font-sans text-xs font-medium uppercase tracking-normal text-[var(--panel-fg)] transition hover:opacity-90 disabled:opacity-60"
+          >
+            {status.kind === "saving" ? "Saving…" : editingSlug ? "Update post" : "Save post"}
+          </button>
+        </form>
+
+        {preview ? (
+          <div className="border border-[var(--frame)] bg-[var(--modal-bg)] p-5 text-[var(--modal-fg)]">
+            <h3 className="mb-4 font-display text-xl font-normal tracking-normal">Preview</h3>
+            <div className="max-h-[700px] overflow-y-auto">
+              {form.title || form.content ? (
+                <article>
+                  <header className="mb-6 border-b border-[var(--frame)] pb-6">
+                    {form.date ? (
+                      <time className="font-sans text-xs font-medium uppercase tracking-normal text-[var(--panel-bg)]">
+                        {form.date}
+                      </time>
+                    ) : null}
+                    {form.title ? (
+                      <h2 className="mt-2 font-display text-[28px] font-normal leading-[1.1] tracking-normal sm:text-[40px]">
+                        {form.title}
+                      </h2>
+                    ) : null}
+                    {form.excerpt ? (
+                      <p className="mt-3 max-w-xl font-sans text-sm leading-relaxed text-[var(--page-fg)]/70">
+                        {form.excerpt}
+                      </p>
+                    ) : null}
+                  </header>
+
+                  {form.cover ? (
+                    <div className="relative mb-6 aspect-[16/9] w-full overflow-hidden border border-[var(--frame)] bg-[var(--panel-bg)]">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={`/blogs/${form.year}/${form.slug}/${form.cover}`}
+                        alt={form.title}
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                  ) : null}
+
+                  <div className="lyka-prose">
+                    <BlogRenderer content={form.content} />
+                  </div>
+                </article>
+              ) : (
+                <p className="font-sans text-sm text-[var(--modal-fg)]/50">Start writing to see a preview.</p>
+              )}
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      {/* ── Available images ── */}
+      <section className="border border-[var(--frame)] bg-[var(--modal-bg)] p-5 text-[var(--modal-fg)]">
+        <h3 className="mb-3 font-display text-xl font-normal tracking-normal">Available images</h3>
+        <p className="mb-4 font-sans text-xs tracking-normal text-[var(--modal-fg)]/60">
+          Place images in <code className="rounded bg-[var(--panel-bg)] px-1 py-0.5 text-[var(--panel-fg)]">public/blogs/&lt;year&gt;/&lt;slug&gt;/</code> and refresh.
+          Click an image to insert it into your content.
+        </p>
+
+        <div className="mb-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setImageFilter("all")}
+            className={`border px-3 py-1 font-sans text-[11px] font-medium uppercase tracking-normal transition ${
+              imageFilter === "all"
+                ? "border-[var(--frame)] bg-[var(--panel-bg)] text-[var(--panel-fg)]"
+                : "border-[var(--frame)] bg-transparent text-[var(--modal-fg)] hover:bg-[var(--panel-bg)] hover:text-[var(--panel-fg)]"
+            }`}
+          >
+            All
+          </button>
+          {yearOptions.map((y) => (
+            <button
+              key={y}
+              type="button"
+              onClick={() => setImageFilter(y)}
+              className={`border px-3 py-1 font-sans text-[11px] font-medium uppercase tracking-normal transition ${
+                imageFilter === y
+                  ? "border-[var(--frame)] bg-[var(--panel-bg)] text-[var(--panel-fg)]"
+                  : "border-[var(--frame)] bg-transparent text-[var(--modal-fg)] hover:bg-[var(--panel-bg)] hover:text-[var(--panel-fg)]"
+              }`}
+            >
+              {y}
+            </button>
+          ))}
+        </div>
+
+        {filteredImages.length > 0 ? (
+          <div className="grid max-h-[300px] grid-cols-4 gap-2 overflow-y-auto sm:grid-cols-6 lg:grid-cols-8">
+            {filteredImages.map((img) => (
+              <button
+                key={img.src}
+                type="button"
+                onClick={() => insertImage(img.src)}
+                className="group relative aspect-square overflow-hidden border border-[var(--frame)] bg-[var(--panel-bg)] transition hover:ring-2 hover:ring-[var(--frame)]"
+                title={`Click to insert: ${img.filename}`}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={img.src}
+                  alt={img.filename}
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                />
+                <span className="absolute inset-x-0 bottom-0 bg-figmaBlack/70 px-1 py-0.5 text-center font-sans text-[9px] text-figmaCream opacity-0 transition group-hover:opacity-100">
+                  {img.filename.length > 12 ? img.filename.slice(0, 10) + "…" : img.filename}
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className="font-sans text-sm text-[var(--modal-fg)]/50">
+            No images found. Place images in <code className="rounded bg-[var(--panel-bg)] px-1 py-0.5 text-[var(--panel-fg)]">public/blogs/{form.year}/{form.slug || "&lt;slug&gt;"}/</code> and refresh.
+          </p>
+        )}
+      </section>
+    </div>
+  );
+}

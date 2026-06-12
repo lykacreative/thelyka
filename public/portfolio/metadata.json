@@ -1,0 +1,64 @@
+[
+  {
+    "src": "/portfolio/design/2024/green-room-poster.svg",
+    "category": "design",
+    "year": "2024",
+    "title": "Green Room Poster",
+    "date": "2024-08-12",
+    "note": "A placeholder poster entry. Replace this file and edit this metadata with your real artwork details."
+  },
+  {
+    "src": "/portfolio/design/2025/soft-edit-study.svg",
+    "category": "design",
+    "year": "2025",
+    "title": "Soft Edit Study",
+    "date": "2025-02-03",
+    "note": "A sample design item showing how notes appear in the lightbox."
+  },
+  {
+    "src": "/portfolio/reviews/2024/tiny-review-card.svg",
+    "category": "reviews",
+    "year": "2024",
+    "title": "Tiny Review Card",
+    "date": "2024-10-22",
+    "note": "Use the reviews folder for testimonial graphics, client notes, or review edits."
+  },
+  {
+    "src": "/portfolio/reviews/2025/warm-words.svg",
+    "category": "reviews",
+    "year": "2025",
+    "title": "Warm Words",
+    "date": "2025-01-17",
+    "note": "Another placeholder review card."
+  },
+  {
+    "src": "/portfolio/sketches/2024/line-practice.svg",
+    "category": "sketches",
+    "year": "2024",
+    "title": "Line Practice",
+    "date": "2024-06-09",
+    "note": "A placeholder sketch. Any image in this folder will be picked up automatically."
+  },
+  {
+    "src": "/portfolio/sketches/2025/morning-sketch.svg",
+    "category": "sketches",
+    "year": "2025",
+    "title": "Morning Sketch",
+    "date": "2025-03-20",
+    "note": "A sample sketch entry for the 2025 filter."
+  },
+  {
+    "src": "/portfolio/design/2025/198369558582617111.jpg",
+    "category": "design",
+    "year": "2025",
+    "title": "hey yo it workss",
+    "note": "welp"
+  },
+  {
+    "src": "/portfolio/design/2025/644437027944310865.jpg",
+    "category": "reviews",
+    "year": "2024",
+    "title": "dave sucks",
+    "note": "dave is 5\"2"
+  }
+]
