@@ -18,10 +18,37 @@ export function generateStaticParams() {
 
 export function generateMetadata({ params }: BlogPostPageProps) {
   const post = getBlogPost(params.slug);
-  if (!post) return { title: "not found · lyka mimics" };
+  if (!post) return { title: "not found" };
+
+  const title = post.title;
+  const description = post.excerpt || "Blog post by Lyka Mimics";
+
   return {
-    title: `${post.title} · lyka mimics`,
-    description: post.excerpt || `Blog post by Lyka Mimics`
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "article",
+      ...(post.coverImage && {
+        images: [
+          {
+            url: post.coverImage,
+            width: 1200,
+            height: 630,
+            alt: post.title
+          }
+        ]
+      })
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      ...(post.coverImage && {
+        images: [post.coverImage]
+      })
+    }
   };
 }
 

@@ -1,12 +1,18 @@
+import type { Metadata } from "next";
 import { getBlogPosts } from "@/lib/blogs";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BodyLock } from "@/components/BodyLock";
 import { BlogList } from "@/components/BlogList";
 import Link from "next/link";
 
-export const metadata = {
-  title: "blog · lyka mimics",
-  description: "Thoughts, stories, and ideas from Lyka Mimics."
+export const metadata: Metadata = {
+  title: "blog",
+  description: "Thoughts, stories, and ideas from Lyka Mimics.",
+  openGraph: {
+    title: "blog · lyka mimics",
+    description: "Thoughts, stories, and ideas from Lyka Mimics.",
+    type: "website"
+  }
 };
 
 export default function BlogsPage() {
