@@ -12,6 +12,7 @@ export type PortfolioItem = {
   title: string;
   note: string;
   date?: string;
+  variants: string[];
 };
 
 type MetadataItem = Partial<PortfolioItem> & {
@@ -67,25 +68,58 @@ export function getPortfolioItems(): PortfolioItem[] {
 
     for (const year of years) {
       const yearDir = path.join(categoryDir, year);
-      const files = fs
-        .readdirSync(yearDir, { withFileTypes: true })
-        .filter((entry) => entry.isFile() && imageExtensions.has(path.extname(entry.name).toLowerCase()))
-        .map((entry) => entry.name)
+      const entries = fs.readdirSync(yearDir, { withFileTypes: true });
+
+      const subdirs = entries.filter((e) => e.isDirectory()).sort((a, b) => a.name.localeCompare(b.name));
+      const files = entries
+        .filter((e) => e.isFile() && imageExtensions.has(path.extname(e.name).toLowerCase()))
+        .map((e) => e.name)
         .sort((a, b) => a.localeCompare(b));
 
-      for (const file of files) {
-        const src = `/portfolio/${category}/${year}/${file}`;
-        const meta = metadata.get(src);
-        const metaCategory = meta?.category && isCategory(meta.category) ? meta.category : category;
+      if (subdirs.length > 0) {
+        for (const subdir of subdirs) {
+          const subdirPath = path.join(yearDir, subdir.name);
+          const subFiles = fs
+            .readdirSync(subdirPath, { withFileTypes: true })
+            .filter((e) => e.isFile() && imageExtensions.has(path.extname(e.name).toLowerCase()))
+            .map((e) => e.name)
+            .sort((a, b) => a.localeCompare(b));
 
-        items.push({
-          src,
-          category: metaCategory,
-          year: meta?.year ?? year,
-          title: meta?.title ?? titleFromFilename(file),
-          note: meta?.note ?? "",
-          date: meta?.date
-        });
+          if (subFiles.length === 0) continue;
+
+          const variants = subFiles.map((file) => `/portfolio/${category}/${year}/${subdir.name}/${file}`);
+          const src = variants[0];
+          const meta = metadata.get(src) ?? metadata.get(`/portfolio/${category}/${year}/${subdir.name}`);
+          const metaCategory = meta?.category && isCategory(meta.category) ? meta.category : category;
+
+          items.push({
+            src,
+            category: metaCategory,
+            year: meta?.year ?? year,
+            title: meta?.title ?? titleFromFilename(subdir.name),
+            note: meta?.note ?? "",
+            date: meta?.date,
+            variants,
+          });
+        }
+      }
+
+      if (files.length > 0) {
+        for (const file of files) {
+          const src = `/portfolio/${category}/${year}/${file}`;
+          const meta = metadata.get(src);
+          const metaCategory = meta?.category && isCategory(meta.category) ? meta.category : category;
+
+          items.push({
+            src,
+            category: metaCategory,
+            year: meta?.year ?? year,
+            title: meta?.title ?? titleFromFilename(file),
+            note: meta?.note ?? "",
+            date: meta?.date,
+            variants: [src],
+          });
+        }
       }
     }
   }
