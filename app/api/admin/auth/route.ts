@@ -31,7 +31,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Wrong password." }, { status: 401 });
   }
 
-  cookies().set(SESSION_COOKIE, SESSION_VALUE, {
+  const cookieStore = await cookies();
+  cookieStore.set(SESSION_COOKIE, SESSION_VALUE, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
@@ -43,6 +44,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE() {
-  cookies().delete(SESSION_COOKIE);
+  const cookieStore = await cookies();
+  cookieStore.delete(SESSION_COOKIE);
   return NextResponse.json({ ok: true });
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Newsreader } from 'next/font/google';
+import { ThemeInit } from '@/components/ThemeInit';
 import './globals.css';
 
 const newsreader = Newsreader({
@@ -15,21 +16,21 @@ const siteUrl = process.env.SITE_URL || 'https://lykamimics.com';
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: 'lyka mimics',
-    template: '%s · lyka mimics',
+    default: 'Lyka Mimics',
+    template: '%s · Lyka Mimics',
   },
   description: 'hey i am lyka and this is my portfolio',
   openGraph: {
-    title: 'lyka mimics',
+    title: 'Lyka Mimics',
     description: 'hey i am lyka and this is my portfolio',
     url: siteUrl,
-    siteName: 'lyka mimics',
+    siteName: 'Lyka Mimics',
     locale: 'en_US',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'lyka mimics',
+    title: 'Lyka Mimics',
     description: 'hey i am lyka and this is my portfolio',
   },
   icons: {
@@ -53,12 +54,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className={`${newsreader.variable} ${newsreader.className}`}>
-        <script
-          dangerouslySetInnerHTML={{
-            __html:
-              "try{var theme=localStorage.getItem('lyka-theme');if(theme==='dark'||theme==='light'){document.documentElement.dataset.theme=theme;}}catch(e){}",
-          }}
-        />
+        <ThemeInit />
         {children}
       </body>
     </html>

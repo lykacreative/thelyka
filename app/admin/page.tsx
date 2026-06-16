@@ -5,12 +5,12 @@ import { categories, getPortfolioItems } from "@/lib/portfolio";
 import { getAllBlogImages, getBlogYears } from "@/lib/blogs";
 
 export const metadata = {
-  title: "admin · lyka mimics",
+  title: "admin",
   description: "Manage portfolio and blog posts."
 };
 
-export default function AdminPage() {
-  if (!isAdminAuthenticated()) {
+export default async function AdminPage() {
+  if (!(await isAdminAuthenticated())) {
     redirect("/admin/login?next=/admin");
   }
 

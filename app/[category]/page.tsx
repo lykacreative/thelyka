@@ -4,9 +4,9 @@ import { GalleryGrid } from "@/components/GalleryGrid";
 import { categories, getItemsByCategory, type Category } from "@/lib/portfolio";
 
 type CategoryPageProps = {
-  params: {
+  params: Promise<{
     category: string;
-  };
+  }>;
 };
 
 const categoryDescriptions: Record<Category, string> = {
@@ -19,8 +19,9 @@ export function generateStaticParams() {
   return categories.map((category) => ({ category }));
 }
 
-export function generateMetadata({ params }: CategoryPageProps): Metadata {
-  const category = params.category as Category;
+export async function generateMetadata({ params }: CategoryPageProps): Promise<Metadata> {
+  const { category: categoryParam } = await params;
+  const category = categoryParam as Category;
   if (!categories.includes(category)) return {};
 
   const title = category.charAt(0).toUpperCase() + category.slice(1);
@@ -35,12 +36,13 @@ export function generateMetadata({ params }: CategoryPageProps): Metadata {
   };
 }
 
-export default function CategoryPage({ params }: CategoryPageProps) {
-  if (!categories.includes(params.category as Category)) {
+export default async function CategoryPage({ params }: CategoryPageProps) {
+  const { category: categoryParam } = await params;
+  if (!categories.includes(categoryParam as Category)) {
     notFound();
   }
 
-  const category = params.category as Category;
+  const category = categoryParam as Category;
   const items = getItemsByCategory(category);
 
   return <GalleryGrid category={category} items={items} />;

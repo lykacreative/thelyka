@@ -29,7 +29,7 @@ export default function Image() {
             letterSpacing: "-0.02em"
           }}
         >
-          lyka mimics
+          Lyka Mimics
         </div>
         <div
           style={{

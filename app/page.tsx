@@ -3,10 +3,10 @@ import { HomePage } from "@/components/HomePage";
 import { getItemsGroupedByCategory, getLogoSrc } from "@/lib/portfolio";
 
 export const metadata: Metadata = {
-  title: "lyka mimics",
+  title: "Lyka Mimics",
   description: "Portfolio of Lyka Mimics — design, sketches, and reviews.",
   openGraph: {
-    title: "lyka mimics",
+    title: "Lyka Mimics",
     description: "Portfolio of Lyka Mimics — design, sketches, and reviews.",
     type: "website"
   }

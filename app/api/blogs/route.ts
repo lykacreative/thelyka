@@ -71,7 +71,7 @@ async function listImageFiles(dir: string): Promise<string[]> {
 }
 
 export async function GET() {
-  if (!isAdminAuthenticated()) {
+  if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
   }
 
@@ -127,7 +127,7 @@ type SaveBody = {
 };
 
 export async function POST(request: Request) {
-  if (!isAdminAuthenticated()) {
+  if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
   }
 
@@ -174,7 +174,7 @@ type DeleteBody = {
 };
 
 export async function DELETE(request: Request) {
-  if (!isAdminAuthenticated()) {
+  if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
   }
 

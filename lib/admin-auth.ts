@@ -3,8 +3,8 @@ import { cookies } from "next/headers";
 const SESSION_COOKIE = "lyka_admin_session";
 const SESSION_VALUE = "authenticated";
 
-export function isAdminAuthenticated() {
-  return cookies().get(SESSION_COOKIE)?.value === SESSION_VALUE;
+export async function isAdminAuthenticated() {
+  return (await cookies()).get(SESSION_COOKIE)?.value === SESSION_VALUE;
 }
 
 export function adminPasswordIsConfigured() {

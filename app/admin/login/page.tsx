@@ -4,18 +4,19 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { adminPasswordIsConfigured, isAdminAuthenticated } from "@/lib/admin-auth";
 
 export const metadata = {
-  title: "login · lyka mimics"
+  title: "login"
 };
 
 type LoginPageProps = {
-  searchParams: {
+  searchParams: Promise<{
     next?: string;
-  };
+  }>;
 };
 
-export default function LoginPage({ searchParams }: LoginPageProps) {
-  if (isAdminAuthenticated()) {
-    redirect(searchParams.next && searchParams.next.startsWith("/") ? searchParams.next : "/admin");
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const { next } = await searchParams;
+  if (await isAdminAuthenticated()) {
+    redirect(next && next.startsWith("/") ? next : "/admin");
   }
 
   return (
@@ -30,7 +31,7 @@ export default function LoginPage({ searchParams }: LoginPageProps) {
         </p>
 
         <LoginForm
-          nextPath={searchParams.next && searchParams.next.startsWith("/") ? searchParams.next : "/admin"}
+          nextPath={next && next.startsWith("/") ? next : "/admin"}
           passwordConfigured={adminPasswordIsConfigured()}
         />
       </section>

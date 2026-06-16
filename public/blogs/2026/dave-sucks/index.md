@@ -1,8 +1,8 @@
 ---
-title: "Dave Sucks"
+title: Dave Sucks
 date: 2026-06-07
-excerpt: "A nice investigation why Dave sucks"
-cover: dave-sucks.jpg
+excerpt: A nice investigation why Dave sucks
+cover: akaza.png
 ---
 
 Hello *there*, thanks for reading my **blog**
@@ -11,3 +11,5 @@ Hello *there*, thanks for reading my **blog**
 
 - I love you
 - Or I might not
+
+![image](/blogs/2026/archs/akaza.png)

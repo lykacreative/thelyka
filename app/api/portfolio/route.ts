@@ -84,7 +84,7 @@ function sanitizeNote(value: string) {
 }
 
 export async function GET() {
-  if (!isAdminAuthenticated()) {
+  if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
   }
   const metadata = await readMetadata();
@@ -101,7 +101,7 @@ type UpdateBody = {
 };
 
 export async function PATCH(request: Request) {
-  if (!isAdminAuthenticated()) {
+  if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
   }
 
@@ -179,7 +179,7 @@ type DeleteBody = {
 };
 
 export async function DELETE(request: Request) {
-  if (!isAdminAuthenticated()) {
+  if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
   }
 

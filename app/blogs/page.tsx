@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   title: "blog",
   description: "Thoughts, stories, and ideas from Lyka Mimics.",
   openGraph: {
-    title: "blog · lyka mimics",
+    title: "blog · Lyka Mimics",
     description: "Thoughts, stories, and ideas from Lyka Mimics.",
     type: "website"
   }
