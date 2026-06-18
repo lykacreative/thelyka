@@ -25,7 +25,7 @@
   --panel-bg: #6e3d23;
   --panel-fg: #f5eedb;
   --overlay: rgba(0, 0, 0, 0.6);
-  --modal-bg: linear-gradient(179.62deg, #030303 0.34%, #6e3d23 239.31%);
+  --modal-bg: #030303;
   --modal-fg: #f5eedb;
   --shadow: rgba(0, 0, 0, 0.75);
 }
