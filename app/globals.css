@@ -224,6 +224,178 @@ a {
   margin: 2em 0;
 }
 
+/* ── 50/50 split layout ── */
+
+.lyka-split {
+  display: grid;
+  grid-template-columns: 1fr;
+  background: var(--page-bg-solid);
+  overflow: hidden;
+}
+
+@media (min-width: 768px) {
+  .lyka-split {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.lyka-split--right .lyka-split__image {
+  order: 2;
+}
+
+.lyka-split--right .lyka-split__text {
+  order: 1;
+}
+
+@media (min-width: 768px) {
+  .lyka-split--right .lyka-split__image {
+    order: 2;
+  }
+  .lyka-split--right .lyka-split__text {
+    order: 1;
+  }
+}
+
+.lyka-split__image {
+  position: relative;
+  background: var(--panel-bg);
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+  align-self: start;
+  height: auto;
+}
+
+@media (min-width: 768px) {
+  .lyka-split__image {
+    align-self: center;
+  }
+}
+
+.lyka-split__image img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border: none;
+  margin: 0;
+}
+
+.lyka-split__text {
+  padding: 1.5rem 1.75rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  font-family: var(--font-newsreader), serif;
+  line-height: 1.6;
+  color: var(--page-fg);
+  background: var(--page-bg-solid);
+}
+
+.lyka-split__text > * + * {
+  margin-top: 0.75em;
+}
+
+.lyka-split__text p {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.lyka-split__text p:last-child {
+  margin-bottom: 0;
+}
+
+.lyka-split__text h1,
+.lyka-split__text h2,
+.lyka-split__text h3,
+.lyka-split__text h4 {
+  font-family: var(--font-display), serif;
+  font-weight: 600;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.lyka-split__text h1 { font-size: 1.5rem; }
+.lyka-split__text h2 { font-size: 1.25rem; }
+.lyka-split__text h3 { font-size: 1.1rem; }
+.lyka-split__text h4 { font-size: 1rem; }
+
+.lyka-split__text a {
+  color: var(--panel-bg);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.lyka-split__text a:hover {
+  opacity: 0.7;
+}
+
+.lyka-split__text ul,
+.lyka-split__text ol {
+  padding-left: 1.4em;
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.lyka-split__text li {
+  margin-top: 0.3em;
+}
+
+.lyka-split__text li::marker {
+  color: var(--panel-bg);
+}
+
+.lyka-split__text blockquote {
+  border-left: 3px solid var(--frame);
+  padding-left: 1em;
+  font-style: italic;
+  margin: 0;
+}
+
+.lyka-split__text code {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.88em;
+  background: var(--panel-bg-solid, var(--page-bg-solid));
+  border: 1px solid var(--frame);
+  padding: 0.1em 0.35em;
+  border-radius: 2px;
+}
+
+.lyka-split__text pre {
+  background: var(--page-bg-solid);
+  border: 1px solid var(--frame);
+  padding: 1em 1.25em;
+  overflow-x: auto;
+  font-size: 0.85em;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.lyka-split__text pre code {
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.lyka-split__text img {
+  position: static;
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--frame);
+  margin: 0.5em 0;
+  object-fit: initial;
+  width: auto;
+  inset: auto;
+}
+
+.lyka-split__text hr {
+  border: none;
+  border-top: 1px solid var(--frame);
+  margin: 0.5em 0;
+}
+
 .lyka-prose table {
   width: 100%;
   border-collapse: collapse;

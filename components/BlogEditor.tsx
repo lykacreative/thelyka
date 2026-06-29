@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
-import { FaPenToSquare, FaPlus, FaTrashCan } from "react-icons/fa6";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { FaEye, FaPenToSquare, FaPlus, FaTableColumns, FaTrashCan } from "react-icons/fa6";
+import { BlogPaneViewer } from "@/components/BlogPaneViewer";
 import { BlogRenderer } from "@/components/BlogRenderer";
 
 type BlogImage = {
@@ -65,6 +66,8 @@ export function BlogEditor({ allImages, years }: BlogEditorProps) {
   const [existingPosts, setExistingPosts] = useState<ExistingPost[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(true);
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
+  const [paneOpen, setPaneOpen] = useState(false);
+  const contentRef = useRef<HTMLTextAreaElement | null>(null);
 
   const yearOptions = (() => {
     const set = new Set<string>(years);
@@ -124,6 +127,49 @@ export function BlogEditor({ allImages, years }: BlogEditorProps) {
       title: value,
       slug: slugManuallyEdited ? prev.slug : slugFromTitle(value)
     }));
+  }
+
+  function insertSplitLayout() {
+    const year = form.year || todayYear();
+    const slug = form.slug || "your-slug";
+    const template = `:::split
+![image alt](/blogs/${year}/${slug}/image.jpg)
+:::
+Write your text here. **Markdown** is supported.
+:::`;
+
+    const textarea = contentRef.current;
+    if (!textarea) {
+      setForm((prev) => ({
+        ...prev,
+        content: prev.content
+          ? `${prev.content.replace(/\s*$/, "")}\n\n${template}\n`
+          : `${template}\n`
+      }));
+      return;
+    }
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const before = form.content.slice(0, start);
+    const after = form.content.slice(end);
+    const needsNewlineBefore = before.length > 0 && !before.endsWith("\n\n");
+    const needsNewlineAfter = after.length > 0 && !after.startsWith("\n\n");
+    const prefix = needsNewlineBefore ? (before.endsWith("\n") ? "\n" : "\n\n") : "";
+    const suffix = needsNewlineAfter ? (after.startsWith("\n") ? "\n" : "\n\n") : "";
+
+    const newContent = `${before}${prefix}${template}${suffix}${after}`;
+    setForm((prev) => ({ ...prev, content: newContent }));
+
+    requestAnimationFrame(() => {
+      const el = contentRef.current;
+      if (!el) return;
+      el.focus();
+      const cursor = before.length + prefix.length;
+      const selectStart = cursor + ":::split\n![image alt](".length;
+      const selectEnd = selectStart + `/blogs/${year}/${slug}/image.jpg`.length;
+      el.setSelectionRange(selectStart, selectEnd);
+    });
   }
 
   async function handleSave(event: FormEvent<HTMLFormElement>) {
@@ -261,6 +307,14 @@ export function BlogEditor({ allImages, years }: BlogEditorProps) {
         >
           {preview ? "Hide preview" : "Show preview"}
         </button>
+        <button
+          type="button"
+          onClick={() => setPaneOpen(true)}
+          className="inline-flex items-center gap-1.5 border border-[var(--frame)] bg-[var(--panel-bg)] px-4 py-1.5 font-sans text-xs font-medium uppercase tracking-normal text-[var(--panel-fg)] transition hover:opacity-90"
+        >
+          <FaEye aria-hidden="true" className="h-3 w-3" />
+          Pane view
+        </button>
         {editingSlug ? (
           <button
             type="button"
@@ -282,9 +336,20 @@ export function BlogEditor({ allImages, years }: BlogEditorProps) {
       {/* ── Editor + Preview ── */}
       <div className={`grid gap-6 ${preview ? "lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]" : ""}`}>
         <form onSubmit={handleSave} className="space-y-4 border border-[var(--frame)] bg-[var(--modal-bg)] p-5 text-[var(--modal-fg)]">
-          <h3 className="font-display text-xl font-normal tracking-normal">
-            {editingSlug ? "Edit post" : "New post"}
-          </h3>
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="font-display text-xl font-normal tracking-normal">
+              {editingSlug ? "Edit post" : "New post"}
+            </h3>
+            <button
+              type="button"
+              onClick={() => setPaneOpen(true)}
+              className="inline-flex items-center gap-1.5 border border-[var(--frame)] bg-[var(--page-bg-solid)] px-3 py-1 font-sans text-[10px] font-medium uppercase tracking-normal text-[var(--page-fg)] transition hover:bg-[var(--panel-bg)] hover:text-[var(--panel-fg)]"
+              title="Open pane view to see how this post looks on its own page"
+            >
+              <FaEye aria-hidden="true" className="h-3 w-3" />
+              Pane view
+            </button>
+          </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block">
@@ -360,12 +425,24 @@ export function BlogEditor({ allImages, years }: BlogEditorProps) {
           </label>
 
           <label className="block">
-            <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">Content (Markdown)</span>
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <span className="block font-sans text-[10px] font-medium uppercase tracking-normal">Content (Markdown)</span>
+              <button
+                type="button"
+                onClick={insertSplitLayout}
+                className="inline-flex items-center gap-1.5 border border-[var(--frame)] bg-[var(--page-bg-solid)] px-2.5 py-0.5 font-sans text-[10px] font-medium uppercase tracking-normal text-[var(--page-fg)] transition hover:bg-[var(--panel-bg)] hover:text-[var(--panel-fg)]"
+                title="Insert a 50/50 image + text block. Stacks vertically on mobile, sits side-by-side on larger screens."
+              >
+                <FaTableColumns aria-hidden="true" className="h-3 w-3" />
+                Insert 50/50 split
+              </button>
+            </div>
             <textarea
+              ref={contentRef}
               value={form.content}
               onChange={(event) => setForm({ ...form, content: event.target.value })}
               rows={16}
-              placeholder="Write your blog post in markdown here. Use ![image](/blogs/2025/my-post/image.jpg) to include images."
+              placeholder={`Write your blog post in markdown here.\n\nFor a 50/50 image + text layout, use:\n:::split\n![alt](/blogs/2025/my-post/image.jpg)\n:::\nYour text here. Markdown is supported.\n:::\n\nClick "Insert 50/50 split" above to drop one in automatically.`}
               className="w-full resize-y border border-[var(--frame)] bg-[var(--page-bg-solid)] px-3 py-2 font-mono text-sm tracking-normal text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
               required
             />
@@ -382,7 +459,18 @@ export function BlogEditor({ allImages, years }: BlogEditorProps) {
 
         {preview ? (
           <div className="border border-[var(--frame)] bg-[var(--modal-bg)] p-5 text-[var(--modal-fg)]">
-            <h3 className="mb-4 font-display text-xl font-normal tracking-normal">Preview</h3>
+            <div className="mb-4 flex items-center justify-between gap-2">
+              <h3 className="font-display text-xl font-normal tracking-normal">Preview</h3>
+              <button
+                type="button"
+                onClick={() => setPaneOpen(true)}
+                className="inline-flex items-center gap-1.5 border border-[var(--frame)] bg-[var(--page-bg-solid)] px-3 py-1 font-sans text-[10px] font-medium uppercase tracking-normal text-[var(--page-fg)] transition hover:bg-[var(--panel-bg)] hover:text-[var(--panel-fg)]"
+                title="Open pane view to see how this post looks on its own page"
+              >
+                <FaEye aria-hidden="true" className="h-3 w-3" />
+                Pane view
+              </button>
+            </div>
             <div className="max-h-[700px] overflow-y-auto">
               {form.title || form.content ? (
                 <article>
@@ -429,7 +517,18 @@ export function BlogEditor({ allImages, years }: BlogEditorProps) {
 
       {/* ── Available images ── */}
       <section className="border border-[var(--frame)] bg-[var(--modal-bg)] p-5 text-[var(--modal-fg)]">
-        <h3 className="mb-3 font-display text-xl font-normal tracking-normal">Available images</h3>
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h3 className="font-display text-xl font-normal tracking-normal">Available images</h3>
+          <button
+            type="button"
+            onClick={() => setPaneOpen(true)}
+            className="inline-flex items-center gap-1.5 border border-[var(--frame)] bg-[var(--page-bg-solid)] px-3 py-1 font-sans text-[10px] font-medium uppercase tracking-normal text-[var(--page-fg)] transition hover:bg-[var(--panel-bg)] hover:text-[var(--panel-fg)]"
+            title="Open pane view to see how this post looks on its own page"
+          >
+            <FaEye aria-hidden="true" className="h-3 w-3" />
+            Pane view
+          </button>
+        </div>
         <p className="mb-4 font-sans text-xs tracking-normal text-[var(--modal-fg)]/60">
           Place images in <code className="rounded bg-[var(--panel-bg)] px-1 py-0.5 text-[var(--panel-fg)]">public/blogs/&lt;year&gt;/&lt;slug&gt;/</code> and refresh.
           Click an image to insert it into your content.
@@ -492,6 +591,18 @@ export function BlogEditor({ allImages, years }: BlogEditorProps) {
           </p>
         )}
       </section>
+
+      <BlogPaneViewer
+        open={paneOpen}
+        onClose={() => setPaneOpen(false)}
+        title={form.title}
+        date={form.date}
+        excerpt={form.excerpt}
+        cover={form.cover}
+        year={form.year || todayYear()}
+        slug={form.slug}
+        content={form.content}
+      />
     </div>
   );
 }
