@@ -81,7 +81,7 @@ export function CategoryScroller({ category, items, direction }: CategoryScrolle
     if (Math.abs(current - target) > 0.001) {
       animate(speedScale, target, {
         duration: RESUME_TWEEN_SECONDS,
-        ease: "easeOut"
+        ease: "easeOut",
       });
     }
     const effectiveScale = current;
@@ -106,10 +106,11 @@ export function CategoryScroller({ category, items, direction }: CategoryScrolle
   });
 
   return (
-    <section className="min-w-0">
+    <section className="flex h-full min-h-0 min-w-0 flex-col">
+      {/* Title stays fixed height */}
       <Link
         href={`/${category}`}
-        className="group mb-2 flex items-center justify-center gap-1.5 text-center font-display text-[13px] font-normal leading-none tracking-normal text-[var(--page-fg)] transition hover:-translate-y-0.5 hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)] sm:mb-4 sm:gap-2 sm:text-[28px]"
+        className="group mb-2 flex shrink-0 items-center justify-center gap-1.5 text-center font-display text-[13px] font-normal leading-none tracking-normal text-[var(--page-fg)] transition hover:-translate-y-0.5 hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)] sm:mb-4 sm:gap-2 sm:text-[28px]"
         aria-label={`Open ${categoryLabels[category]} gallery`}
       >
         <span>{categoryLabels[category]}</span>
@@ -127,8 +128,9 @@ export function CategoryScroller({ category, items, direction }: CategoryScrolle
         </svg>
       </Link>
 
+      {/* This now takes the remaining height instead of a fixed vh */}
       <div
-        className="h-[clamp(240px,38vh,340px)] overflow-hidden border-x-[5px] border-[var(--page-fg)] bg-[var(--page-bg-solid)] sm:h-[clamp(360px,54vh,500px)] sm:border-x-[7px]"
+        className="min-h-0 flex-1 overflow-hidden border-x-[5px] border-[var(--page-fg)] bg-[var(--page-bg-solid)] sm:border-x-[7px]"
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
       >
