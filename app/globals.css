@@ -229,7 +229,6 @@ a {
 .lyka-split {
   display: grid;
   grid-template-columns: 1fr;
-  background: var(--page-bg-solid);
   overflow: hidden;
 }
 
@@ -290,7 +289,6 @@ a {
   font-family: var(--font-newsreader), serif;
   line-height: 1.6;
   color: var(--page-fg);
-  background: var(--page-bg-solid);
 }
 
 .lyka-split__text > * + * {

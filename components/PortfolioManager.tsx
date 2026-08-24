@@ -3,9 +3,15 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, type FormEvent } from "react";
-import { FaPenToSquare, FaTrashCan, FaXmark } from "react-icons/fa6";
+import { useMemo, useState, type FormEvent, type ChangeEvent } from "react";
+import { FaPenToSquare, FaTrashCan, FaXmark, FaUpload } from "react-icons/fa6";
 import { categoryLabels } from "@/lib/copy";
+import { artTypes, defaultArtType, type ArtType } from "@/lib/art-types";
+import {
+  defaultReviewType,
+  reviewTypes,
+  type ReviewType,
+} from "@/lib/review-types";
 import type { Category, PortfolioItem } from "@/lib/portfolio";
 
 type PortfolioManagerProps = {
@@ -18,6 +24,7 @@ type Status =
   | { kind: "idle" }
   | { kind: "saving" }
   | { kind: "deleting" }
+  | { kind: "uploading" }
   | { kind: "success"; message: string }
   | { kind: "error"; message: string };
 
@@ -30,13 +37,18 @@ const emptyDraft = {
   date: "",
   note: "",
   category: "design" as Category,
-  year: currentYear()
+  year: currentYear(),
+  artType: defaultArtType as ArtType,
+  reviewType: defaultReviewType as ReviewType,
 };
 
 export function PortfolioManager({ categories, existingYears, existingItems }: PortfolioManagerProps) {
   const router = useRouter();
   const sortedItems = useMemo(
-    () => [...existingItems].sort((a, b) => b.year.localeCompare(a.year) || (b.date ?? "").localeCompare(a.date ?? "")),
+    () =>
+      [...existingItems].sort(
+        (a, b) => b.year.localeCompare(a.year) || (b.date ?? "").localeCompare(a.date ?? "")
+      ),
     [existingItems]
   );
 
@@ -45,6 +57,20 @@ export function PortfolioManager({ categories, existingYears, existingItems }: P
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [confirmDelete, setConfirmDelete] = useState<{ src: string; title: string } | null>(null);
   const [deleteFile, setDeleteFile] = useState(true);
+
+  // Upload state
+  const [showUpload, setShowUpload] = useState(false);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadPreview, setUploadPreview] = useState<string | null>(null);
+  const [uploadDraft, setUploadDraft] = useState({
+    title: "",
+    date: "",
+    note: "",
+    category: "design" as Category,
+    year: currentYear(),
+    artType: defaultArtType as ArtType,
+    reviewType: defaultReviewType as ReviewType,
+  });
 
   const yearOptions = useMemo(() => {
     const set = new Set<string>(existingYears);
@@ -59,7 +85,9 @@ export function PortfolioManager({ categories, existingYears, existingItems }: P
       date: item.date ?? "",
       note: item.note,
       category: item.category,
-      year: item.year
+      year: item.year,
+      artType: item.artType ?? defaultArtType,
+      reviewType: item.reviewType ?? defaultReviewType,
     });
     setStatus({ kind: "idle" });
   }
@@ -68,6 +96,92 @@ export function PortfolioManager({ categories, existingYears, existingItems }: P
     setEditingSrc(null);
     setDraft({ ...emptyDraft });
     setStatus({ kind: "idle" });
+  }
+
+  function openUpload() {
+    setShowUpload(true);
+    setUploadFile(null);
+    setUploadPreview(null);
+    setUploadDraft({
+      title: "",
+      date: "",
+      note: "",
+      category: "design",
+      year: currentYear(),
+      artType: defaultArtType,
+      reviewType: defaultReviewType,
+    });
+    setStatus({ kind: "idle" });
+  }
+
+  function closeUpload() {
+    setShowUpload(false);
+    setUploadFile(null);
+    if (uploadPreview) URL.revokeObjectURL(uploadPreview);
+    setUploadPreview(null);
+    setStatus({ kind: "idle" });
+  }
+
+  function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null;
+    if (uploadPreview) URL.revokeObjectURL(uploadPreview);
+    setUploadFile(file);
+    setUploadPreview(file ? URL.createObjectURL(file) : null);
+
+    // Auto-fill title from filename if empty
+    if (file && !uploadDraft.title) {
+      const name = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
+      setUploadDraft((d) => ({ ...d, title: name }));
+    }
+  }
+
+  async function handleUpload(e?: FormEvent) {
+    e?.preventDefault();
+
+    if (!uploadFile) {
+      setStatus({ kind: "error", message: "Please choose an image file." });
+      return;
+    }
+    if (!uploadDraft.title.trim()) {
+      setStatus({ kind: "error", message: "Title is required." });
+      return;
+    }
+
+    setStatus({ kind: "uploading" });
+
+    const formData = new FormData();
+    formData.append("file", uploadFile);
+    formData.append("title", uploadDraft.title.trim());
+    formData.append("category", uploadDraft.category);
+    formData.append("year", uploadDraft.year);
+    if (uploadDraft.date.trim()) formData.append("date", uploadDraft.date.trim());
+    if (uploadDraft.note.trim()) formData.append("note", uploadDraft.note.trim());
+    if (uploadDraft.category === "arts") {
+      formData.append("artType", uploadDraft.artType);
+    }
+    if (uploadDraft.category === "reviews") {
+      formData.append("reviewType", uploadDraft.reviewType);
+    }
+
+    try {
+      const response = await fetch("/api/portfolio/upload", {
+        method: "POST",
+        body: formData
+      });
+      const payload = (await response.json().catch(() => ({}))) as { error?: string; src?: string };
+      if (!response.ok) {
+        setStatus({ kind: "error", message: payload.error ?? "Upload failed." });
+        return;
+      }
+      setStatus({ kind: "success", message: "Artwork uploaded successfully." });
+      closeUpload();
+      router.refresh();
+    } catch (error) {
+      setStatus({
+        kind: "error",
+        message: error instanceof Error ? error.message : "Upload failed."
+      });
+    }
   }
 
   async function handleSave(event: FormEvent<HTMLFormElement>) {
@@ -89,7 +203,9 @@ export function PortfolioManager({ categories, existingYears, existingItems }: P
           date: draft.date.trim() || undefined,
           note: draft.note.trim(),
           category: draft.category,
-          year: draft.year
+          year: draft.year,
+          ...(draft.category === "arts" ? { artType: draft.artType } : {}),
+          ...(draft.category === "reviews" ? { reviewType: draft.reviewType } : {}),
         })
       });
       const payload = (await response.json().catch(() => ({}))) as { error?: string };
@@ -138,9 +254,20 @@ export function PortfolioManager({ categories, existingYears, existingItems }: P
     <div className="space-y-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="font-sans text-xs tracking-normal text-[var(--page-fg)]/70">
-          {sortedItems.length} item{sortedItems.length === 1 ? "" : "s"} found. Click any artwork to edit its details.
+          {sortedItems.length} item{sortedItems.length === 1 ? "" : "s"} found. Click any artwork to edit
+          its details.
         </p>
         <div className="flex items-center gap-3">
+          {/* NEW UPLOAD BUTTON */}
+          <button
+            type="button"
+            onClick={openUpload}
+            className="flex items-center gap-1.5 border border-[var(--frame)] bg-[var(--panel-bg)] px-3 py-1 font-sans text-xs font-medium uppercase tracking-normal text-[var(--panel-fg)] transition hover:opacity-90"
+          >
+            <FaUpload className="h-3 w-3" />
+            Upload
+          </button>
+
           <Link
             href="/"
             className="border border-[var(--frame)] bg-transparent px-3 py-1 font-sans text-xs font-medium uppercase tracking-normal text-[var(--page-fg)] transition hover:bg-[var(--panel-bg)] hover:text-[var(--panel-fg)]"
@@ -158,9 +285,187 @@ export function PortfolioManager({ categories, existingYears, existingItems }: P
       </div>
 
       {status.kind === "success" ? (
-        <p className="font-sans text-xs tracking-normal text-emerald-700 dark:text-emerald-300">{status.message}</p>
+        <p className="font-sans text-xs tracking-normal text-emerald-700 dark:text-emerald-300">
+          {status.message}
+        </p>
       ) : null}
 
+      {/* ========== UPLOAD MODAL ========== */}
+      {showUpload ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--overlay)] p-4 backdrop-blur"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Upload artwork"
+          onClick={closeUpload}
+        >
+          <div
+            className="w-full max-w-lg border border-[var(--frame)] bg-[var(--modal-bg)] p-6 text-[var(--modal-fg)] shadow-[0_30px_90px_var(--shadow)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="font-display text-2xl font-normal tracking-normal">
+                Upload artwork
+              </h2>
+              <button
+                type="button"
+                onClick={closeUpload}
+                className="grid h-8 w-8 place-items-center rounded-full border border-[var(--frame)] transition hover:bg-[var(--panel-bg)]"
+                aria-label="Close"
+              >
+                <FaXmark className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void handleUpload(e);
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">
+                  Image file
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="w-full border border-[var(--frame)] bg-[var(--page-bg-solid)] px-2 py-2 font-sans text-sm text-[var(--page-fg)] file:mr-3 file:border-0 file:bg-[var(--panel-bg)] file:px-3 file:py-1 file:text-xs file:font-medium file:uppercase file:text-[var(--panel-fg)]"
+                  required
+                />
+                {uploadPreview && (
+                  <div className="mt-3 relative aspect-square w-full max-w-[200px] overflow-hidden border border-[var(--frame)] bg-[var(--panel-bg)]">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={uploadPreview} alt="Preview" className="h-full w-full object-contain" />
+                  </div>
+                )}
+              </div>
+
+              <label className="block">
+                <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">Title</span>
+                <input
+                  type="text"
+                  value={uploadDraft.title}
+                  onChange={(e) => setUploadDraft({ ...uploadDraft, title: e.target.value })}
+                  className="w-full border border-[var(--frame)] bg-[var(--page-bg-solid)] px-2 py-1 font-display text-sm tracking-normal text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
+                  required
+                />
+              </label>
+
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block">
+                  <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">Category</span>
+                  <select
+                    value={uploadDraft.category}
+                    onChange={(e) => {
+                      const next = e.target.value as Category;
+                      setUploadDraft({
+                        ...uploadDraft,
+                        category: next,
+                        ...(next === "arts" ? { artType: defaultArtType } : { artType: defaultArtType }),
+                        ...(next === "reviews" ? { reviewType: defaultReviewType } : { reviewType: defaultReviewType }),
+                      });
+                    }}
+                    className="w-full border border-[var(--frame)] bg-[var(--page-bg-solid)] px-2 py-1 font-display text-sm tracking-normal text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
+                  >
+                    {categories.map((value) => (
+                      <option key={value} value={value}>{categoryLabels[value]}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">Year</span>
+                  <select
+                    value={uploadDraft.year}
+                    onChange={(e) => setUploadDraft({ ...uploadDraft, year: e.target.value })}
+                    className="w-full border border-[var(--frame)] bg-[var(--page-bg-solid)] px-2 py-1 font-display text-sm tracking-normal text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
+                  >
+                    {yearOptions.map((value) => (
+                      <option key={value} value={value}>{value}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              {uploadDraft.category === "arts" ? (
+                <label className="block">
+                  <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">Art type</span>
+                  <select
+                    value={uploadDraft.artType}
+                    onChange={(e) => setUploadDraft({ ...uploadDraft, artType: e.target.value as ArtType })}
+                    className="w-full border border-[var(--frame)] bg-[var(--page-bg-solid)] px-2 py-1 font-display text-sm tracking-normal text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
+                  >
+                    {artTypes.map((value) => (
+                      <option key={value} value={value}>{value}</option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+
+              {uploadDraft.category === "reviews" ? (
+                <label className="block">
+                  <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">Review type</span>
+                  <select
+                    value={uploadDraft.reviewType}
+                    onChange={(e) => setUploadDraft({ ...uploadDraft, reviewType: e.target.value as ReviewType })}
+                    className="w-full border border-[var(--frame)] bg-[var(--page-bg-solid)] px-2 py-1 font-display text-sm tracking-normal text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
+                  >
+                    {reviewTypes.map((value) => (
+                      <option key={value} value={value}>{value}</option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+
+              <label className="block">
+                <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">Date (optional)</span>
+                <input
+                  type="date"
+                  value={uploadDraft.date}
+                  onChange={(e) => setUploadDraft({ ...uploadDraft, date: e.target.value })}
+                  className="w-full border border-[var(--frame)] bg-[var(--page-bg-solid)] px-2 py-1 font-display text-sm tracking-normal text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">Artist note (optional)</span>
+                <textarea
+                  value={uploadDraft.note}
+                  onChange={(e) => setUploadDraft({ ...uploadDraft, note: e.target.value })}
+                  rows={3}
+                  className="w-full resize-none border border-[var(--frame)] bg-[var(--page-bg-solid)] px-2 py-1 font-display text-sm tracking-normal text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
+                />
+              </label>
+
+              <div className="flex flex-wrap items-center gap-3 pt-2">
+                <button
+                  type="submit"
+                  disabled={status.kind === "uploading"}
+                  className="border border-[var(--frame)] bg-[var(--panel-bg)] px-4 py-2 font-sans text-xs font-medium uppercase tracking-normal text-[var(--panel-fg)] transition hover:opacity-90 disabled:opacity-60"
+                >
+                  {status.kind === "uploading" ? "Uploading…" : "Upload"}
+                </button>
+                <button
+                  type="button"
+                  onClick={closeUpload}
+                  className="border border-[var(--frame)] bg-transparent px-4 py-2 font-sans text-xs font-medium uppercase tracking-normal text-[var(--modal-fg)] transition hover:bg-[var(--panel-bg)] hover:text-[var(--panel-fg)]"
+                >
+                  Cancel
+                </button>
+                {status.kind === "error" && (
+                  <span className="font-sans text-[11px] tracking-normal text-rose-700 dark:text-rose-300">
+                    {status.message}
+                  </span>
+                )}
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
+      {/* ========== EXISTING GRID ========== */}
       <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
         {sortedItems.map((item) => {
           const isEditing = editingSrc === item.src;
@@ -180,11 +485,17 @@ export function PortfolioManager({ categories, existingYears, existingItems }: P
                   className="object-contain"
                 />
               </span>
-              <p className="mt-3 truncate font-display text-base tracking-normal text-[var(--page-fg)]" title={item.title}>
+              <p
+                className="mt-3 truncate font-display text-base tracking-normal text-[var(--page-fg)]"
+                title={item.title}
+              >
                 {item.title}
               </p>
               <p className="font-sans text-[11px] uppercase tracking-normal text-[var(--modal-fg)]/70">
-                {categoryLabels[item.category]} · {item.year}
+                {categoryLabels[item.category]}
+                {item.category === "arts" && item.artType ? ` · ${item.artType}` : ""}
+                {item.category === "reviews" && item.reviewType ? ` · ${item.reviewType}` : ""}
+                · {item.year}
                 {item.date ? ` · ${item.date}` : ""}
               </p>
 
@@ -210,7 +521,9 @@ export function PortfolioManager({ categories, existingYears, existingItems }: P
               {isEditing ? (
                 <form onSubmit={handleSave} className="mt-3 space-y-3 border-t border-[var(--frame)] pt-3">
                   <label className="block">
-                    <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">Title</span>
+                    <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">
+                      Title
+                    </span>
                     <input
                       type="text"
                       value={draft.title}
@@ -222,10 +535,20 @@ export function PortfolioManager({ categories, existingYears, existingItems }: P
 
                   <div className="grid grid-cols-2 gap-2">
                     <label className="block">
-                      <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">Category</span>
+                      <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">
+                        Category
+                      </span>
                       <select
                         value={draft.category}
-                        onChange={(event) => setDraft({ ...draft, category: event.target.value as Category })}
+                        onChange={(event) => {
+                          const next = event.target.value as Category;
+                          setDraft({
+                            ...draft,
+                            category: next,
+                            ...(next === "arts" ? { artType: defaultArtType } : { artType: defaultArtType }),
+                            ...(next === "reviews" ? { reviewType: defaultReviewType } : { reviewType: defaultReviewType }),
+                          });
+                        }}
                         className="w-full border border-[var(--frame)] bg-[var(--page-bg-solid)] px-2 py-1 font-display text-sm tracking-normal text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
                       >
                         {categories.map((value) => (
@@ -236,7 +559,9 @@ export function PortfolioManager({ categories, existingYears, existingItems }: P
                       </select>
                     </label>
                     <label className="block">
-                      <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">Year</span>
+                      <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">
+                        Year
+                      </span>
                       <select
                         value={draft.year}
                         onChange={(event) => setDraft({ ...draft, year: event.target.value })}
@@ -251,8 +576,52 @@ export function PortfolioManager({ categories, existingYears, existingItems }: P
                     </label>
                   </div>
 
+                   {draft.category === "arts" ? (
+                     <label className="block">
+                       <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">
+                         Art type
+                       </span>
+                       <select
+                         value={draft.artType}
+                         onChange={(event) =>
+                           setDraft({ ...draft, artType: event.target.value as ArtType })
+                         }
+                         className="w-full border border-[var(--frame)] bg-[var(--page-bg-solid)] px-2 py-1 font-display text-sm tracking-normal text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
+                       >
+                         {artTypes.map((value) => (
+                           <option key={value} value={value}>
+                             {value}
+                           </option>
+                         ))}
+                       </select>
+                     </label>
+                   ) : null}
+
+                   {draft.category === "reviews" ? (
+                     <label className="block">
+                       <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">
+                         Review type
+                       </span>
+                       <select
+                         value={draft.reviewType}
+                         onChange={(event) =>
+                           setDraft({ ...draft, reviewType: event.target.value as ReviewType })
+                         }
+                         className="w-full border border-[var(--frame)] bg-[var(--page-bg-solid)] px-2 py-1 font-display text-sm tracking-normal text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
+                       >
+                         {reviewTypes.map((value) => (
+                           <option key={value} value={value}>
+                             {value}
+                           </option>
+                         ))}
+                       </select>
+                     </label>
+                   ) : null}
+
                   <label className="block">
-                    <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">Date</span>
+                    <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">
+                      Date
+                    </span>
                     <input
                       type="date"
                       value={draft.date}
@@ -262,7 +631,9 @@ export function PortfolioManager({ categories, existingYears, existingItems }: P
                   </label>
 
                   <label className="block">
-                    <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">Artist note</span>
+                    <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">
+                      Artist note
+                    </span>
                     <textarea
                       value={draft.note}
                       onChange={(event) => setDraft({ ...draft, note: event.target.value })}
@@ -287,7 +658,9 @@ export function PortfolioManager({ categories, existingYears, existingItems }: P
                       Cancel
                     </button>
                     {status.kind === "error" ? (
-                      <span className="font-sans text-[11px] tracking-normal text-rose-700 dark:text-rose-300">{status.message}</span>
+                      <span className="font-sans text-[11px] tracking-normal text-rose-700 dark:text-rose-300">
+                        {status.message}
+                      </span>
                     ) : null}
                   </div>
                 </form>
@@ -298,13 +671,12 @@ export function PortfolioManager({ categories, existingYears, existingItems }: P
 
         {sortedItems.length === 0 ? (
           <li className="col-span-full border border-dashed border-[var(--frame)] p-8 text-center font-display text-base tracking-normal text-[var(--modal-fg)]/70">
-            No artwork found. Drop images into
-            <code className="mx-1 rounded bg-[var(--panel-bg)] px-1 py-0.5 text-[var(--panel-fg)]">public/portfolio/&lt;category&gt;/&lt;year&gt;/</code>
-            and refresh.
+            No artwork found. Use the <strong>Upload</strong> button above to add your first piece.
           </li>
         ) : null}
       </ul>
 
+      {/* Delete confirmation modal (unchanged) */}
       {confirmDelete ? (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--overlay)] p-4 backdrop-blur"
@@ -328,7 +700,12 @@ export function PortfolioManager({ categories, existingYears, existingItems }: P
                 onChange={(event) => setDeleteFile(event.target.checked)}
                 className="h-4 w-4"
               />
-              <span>Also delete the image file from <code className="rounded bg-[var(--panel-bg)] px-1 py-0.5 text-[var(--panel-fg)]">public/portfolio</code></span>
+              <span>
+                Also delete the image file from{" "}
+                <code className="rounded bg-[var(--panel-bg)] px-1 py-0.5 text-[var(--panel-fg)]">
+                  public/portfolio
+                </code>
+              </span>
             </label>
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <button
@@ -347,7 +724,9 @@ export function PortfolioManager({ categories, existingYears, existingItems }: P
                 Cancel
               </button>
               {status.kind === "error" ? (
-                <span className="font-sans text-[11px] tracking-normal text-rose-700 dark:text-rose-300">{status.message}</span>
+                <span className="font-sans text-[11px] tracking-normal text-rose-700 dark:text-rose-300">
+                  {status.message}
+                </span>
               ) : null}
             </div>
           </div>

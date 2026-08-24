@@ -32,20 +32,50 @@
     "note": "Another placeholder review card."
   },
   {
-    "src": "/portfolio/sketches/2024/line-practice.svg",
-    "category": "sketches",
+    "src": "/portfolio/arts/sketches/2024/line-practice.svg",
+    "category": "arts",
     "year": "2024",
     "title": "Line Practice",
     "date": "2024-06-09",
+    "artType": "Sketches",
     "note": "A placeholder sketch. Any image in this folder will be picked up automatically."
   },
   {
-    "src": "/portfolio/sketches/2025/morning-sketch.svg",
-    "category": "sketches",
+    "src": "/portfolio/arts/sketches/2025/morning-sketch.svg",
+    "category": "arts",
     "year": "2025",
     "title": "Morning Sketch",
     "date": "2025-03-20",
+    "artType": "Sketches",
     "note": "A sample sketch entry for the 2025 filter."
+  },
+  {
+    "src": "/portfolio/arts/sketches/2024/Chillin.jpg",
+    "category": "arts",
+    "year": "2024",
+    "title": "Chillin",
+    "artType": "Sketches"
+  },
+  {
+    "src": "/portfolio/arts/digitalart/2024/anime wallpaper.jpg",
+    "category": "arts",
+    "year": "2024",
+    "title": "Anime Wallpaper",
+    "artType": "Digital Art"
+  },
+  {
+    "src": "/portfolio/arts/digitalart/2025/ONE PIECE WALLPAPER.jpg",
+    "category": "arts",
+    "year": "2025",
+    "title": "One Piece",
+    "artType": "Digital Art"
+  },
+  {
+    "src": "/portfolio/arts/photography/2025/by Ramon Nunez.jpg",
+    "category": "arts",
+    "year": "2025",
+    "title": "By Ramon Nunez",
+    "artType": "Photography"
   },
   {
     "src": "/portfolio/design/2025/198369558582617111.jpg",
@@ -60,5 +90,59 @@
     "year": "2024",
     "title": "dave sucks",
     "note": "dave is 5\"2"
+  },
+  {
+    "src": "/portfolio/design/2028/photo_2026-06-17 00.53.32.jpeg",
+    "category": "design",
+    "year": "2028",
+    "title": "Test",
+    "note": "This flower represents beauty, growth, and the quiet strength found in nature. I wanted to capture the delicate balance between softness and resilience—the way a flower can appear fragile while continuing to grow toward the light.Sun: Full sun to light shade (afternoon shade in hot climates helps)\nSoil: Well-draining, slightly acidic to neutral, rich in organic matter\nPlanting: Bulbs in fall (or early spring in cold areas); plant 3× the bulb’s height deep\nWater: Consistent moisture, especially while growing; avoid waterlogged soil.This flower represents beauty, growth, and the quiet strength found in nature. I wanted to capture the delicate balance between softness and resilience—the way a flower can appear fragile while continuing to grow toward the light.Sun: Full sun to light shade (afternoon shade in hot climates helps)\nSoil: Well-draining, slightly acidic to neutral, rich in organic matter\nPlanting: Bulbs in fall (or early spring in cold areas); plant 3× the bulb’s height deep\nWater: Consistent moisture, especially while growing; avoid waterlogged soil"
+  },
+  {
+    "src": "/portfolio/design/2028/x.png",
+    "category": "design",
+    "year": "2028",
+    "title": "Phalaenopsis",
+    "note": "This flower represents beauty, growth, and the quiet strength found in nature. I wanted to capture the delicate balance between softness and resilience—the way a flower can appear fragile while continuing to grow toward the light.Sun: Full sun to light shade (afternoon shade in hot climates helps)\nSoil: Well-draining, slightly acidic to neutral, rich in organic matter\nPlanting: Bulbs in fall (or early spring in cold areas); plant 3× the bulb’s height deep\nWater: Consistent moisture, especially while growing; avoid waterlogged soil.This flower represents beauty, growth, and the quiet strength found in nature. I wanted to capture the delicate balance between softness and resilience—the way a flower can appear fragile while continuing to grow toward the light.Sun: Full sun to light shade (afternoon shade in hot climates helps)\nSoil: Well-draining, slightly acidic to neutral, rich in organic matter\nPlanting: Bulbs in fall (or early spring in cold areas); plant 3× the bulb’s height deep\nWater: Consistent moisture, especially while growing; avoid waterlogged soil"
+  },
+  {
+    "src": "/portfolio/design/2026/black/T2.png",
+    "category": "design",
+    "year": "2026",
+    "title": "Black",
+    "note": "black"
+  },
+  {
+    "src": "/portfolio/design/2028/1786978186159-20250731_1857_image.png",
+    "category": "design",
+    "year": "2028",
+    "title": "20250731 1857 image",
+    "note": "ai",
+    "date": "2026-08-28"
+  },
+  {
+    "src": "/portfolio/arts/photography/2026/1787167295257-20250731_1857_image.png",
+    "category": "arts",
+    "year": "2026",
+    "title": "20250731 1857 image",
+    "note": "art\n\n\n\n\n\n\n\ngg",
+    "artType": "Photography"
+  },
+  {
+    "src": "/portfolio/reviews/books/2028/1787334352751-20260525_184137.jpg",
+    "category": "reviews",
+    "year": "2028",
+    "title": "bookj",
+    "note": "kkk",
+    "date": "2026-08-22",
+    "reviewType": "Books"
+  },
+  {
+    "src": "/portfolio/design/2028/ai.png",
+    "category": "reviews",
+    "year": "2027",
+    "title": "Ai",
+    "note": "ai the best",
+    "reviewType": "Movies"
   }
 ]

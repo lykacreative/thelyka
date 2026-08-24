@@ -45,7 +45,7 @@ export function BlogPaneViewer({
     };
   }, [open, onClose]);
 
-  const coverSrc = cover ? `/blogs/${year}/${slug}/${cover}` : null;
+  const coverSrc = cover ? (cover.startsWith("/media/") ? cover : `/media/${year}/${cover}`) : null;
 
   return (
     <AnimatePresence>

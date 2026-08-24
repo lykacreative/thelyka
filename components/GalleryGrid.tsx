@@ -6,8 +6,8 @@ import { useMemo, useState } from 'react';
 import { BodyLock } from '@/components/BodyLock';
 import { Lightbox } from '@/components/Lightbox';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { categoryLabels } from '@/lib/copy';
 import type { Category, PortfolioItem } from '@/lib/portfolio';
+import { categoryLabels } from '@/lib/copy';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa6';
 
 type GalleryGridProps = {
@@ -24,22 +24,30 @@ export function GalleryGrid({ category, items }: GalleryGridProps) {
     [items],
   );
   const [selectedYear, setSelectedYear] = useState(years[0] ?? '');
-  const [yearOffset, setYearOffset] = useState(0);
   const [activeItem, setActiveItem] = useState<PortfolioItem | null>(null);
   const filteredItems = selectedYear
     ? items.filter((item) => item.year === selectedYear)
     : items;
 
-  const maxVisible = 3;
-  const visibleYears = years.slice(yearOffset, yearOffset + maxVisible);
-  const canGoLeft = yearOffset > 0;
-  const canGoRight = yearOffset + maxVisible < years.length;
+  const currentYearIndex = years.indexOf(selectedYear);
+
+  const previousYear = () => {
+    if (currentYearIndex < years.length - 1) {
+      setSelectedYear(years[currentYearIndex + 1]);
+    }
+  };
+
+  const nextYear = () => {
+    if (currentYearIndex > 0) {
+      setSelectedYear(years[currentYearIndex - 1]);
+    }
+  };
 
   return (
     <main className='min-h-screen bg-[var(--page-bg)] text-[var(--page-fg)] transition-colors duration-300'>
       <BodyLock locked={false} />
       <ThemeToggle />
-      <section className='mx-auto min-h-screen max-w-[1358px] px-5 pb-20 pt-14 sm:px-8 lg:px-0 lg:pt-[86px]'>
+      <section className='mx-auto min-h-screen max-w-[1358px] px-5 pb-20 pt-14 sm:px-8 lg:px-16 lg:pt-[86px]'>
         <nav className='relative h-[58px]'>
           <Link
             href='/'
@@ -52,7 +60,7 @@ export function GalleryGrid({ category, items }: GalleryGridProps) {
             />
           </Link>
           <h1 className='absolute left-1/2 top-0 -translate-x-1/2 font-display text-[42px] font-normal leading-none tracking-normal sm:text-[50px]'>
-            {selectedYear || '2025'}
+            {categoryLabels[category]}
           </h1>
         </nav>
 
@@ -61,33 +69,24 @@ export function GalleryGrid({ category, items }: GalleryGridProps) {
             <div className='mb-5 flex items-center justify-center gap-3'>
               <button
                 type='button'
-                onClick={() => setYearOffset((o) => Math.max(0, o - 1))}
-                disabled={!canGoLeft}
+                onClick={previousYear}
+                disabled={currentYearIndex === years.length - 1}
                 className='grid h-10 w-10 place-items-center border border-[var(--frame)] transition hover:bg-[var(--panel-bg)] hover:text-[var(--panel-fg)] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]'
-                aria-label='Previous years'
+                aria-label='Previous year'
               >
                 <FaChevronLeft className='h-4 w-4' />
               </button>
-              {visibleYears.map((year) => (
-                <button
-                  key={year}
-                  type='button'
-                  onClick={() => setSelectedYear(year)}
-                  className={`border border-[var(--frame)] px-5 py-1 font-display text-xl font-normal tracking-normal transition hover:bg-[var(--panel-bg)] hover:text-[var(--panel-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)] ${
-                    year === selectedYear
-                      ? 'bg-[var(--panel-bg)] text-[var(--panel-fg)]'
-                      : 'text-[var(--page-fg)]'
-                  }`}
-                >
-                  {year}
-                </button>
-              ))}
+
+              <div className='min-w-[88px] border border-[var(--frame)] bg-[var(--panel-bg)] px-5 py-1 font-display text-xl font-normal tracking-normal text-[var(--panel-fg)]'>
+                {selectedYear}
+              </div>
+
               <button
                 type='button'
-                onClick={() => setYearOffset((o) => Math.min(years.length - maxVisible, o + 1))}
-                disabled={!canGoRight}
+                onClick={nextYear}
+                disabled={currentYearIndex === 0}
                 className='grid h-10 w-10 place-items-center border border-[var(--frame)] transition hover:bg-[var(--panel-bg)] hover:text-[var(--panel-fg)] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]'
-                aria-label='Next years'
+                aria-label='Next year'
               >
                 <FaChevronRight className='h-4 w-4' />
               </button>
@@ -128,10 +127,14 @@ export function GalleryGrid({ category, items }: GalleryGridProps) {
             ))}
           </div>
         ) : (
-          <p className='mx-auto mt-10 max-w-2xl p-6 text-center font-display text-2xl font-normal leading-7 tracking-normal text-[var(--page-fg)]'>
-            Drop images into public/portfolio/{category}/2025 and refresh the
-            page.
-          </p>
+          <div className='py-24 text-center'>
+            <p className='font-display text-2xl font-normal tracking-normal text-[var(--page-fg)] sm:text-3xl'>
+              No {category} uploaded yet.
+            </p>
+            <p className='mt-3 font-sans text-xs uppercase tracking-normal text-[var(--page-fg)]/50'>
+              Upload artwork from the admin panel to see it here.
+            </p>
+          </div>
         )}
       </section>
 

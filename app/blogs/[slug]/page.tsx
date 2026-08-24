@@ -62,7 +62,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     <main className="min-h-screen bg-[var(--page-bg)] text-[var(--page-fg)] transition-colors duration-300">
       <BodyLock locked={false} />
       <ThemeToggle />
-      <article className="mx-auto w-full max-w-[720px] px-5 pb-20 pt-20 sm:px-8">
+      <article className="mx-auto w-full max-w-[720px] bg-[var(--page-bg)] px-5 pb-20 pt-20 sm:px-8">
         <nav className="mb-12 flex items-center justify-between">
           <Link
             href="/blogs"

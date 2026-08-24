@@ -7,12 +7,12 @@ cover: archs.jpg
 
 I'm testing the blog.
 
-![image](/blogs/2026/archs/akazatest.png)
+![image](/media/2026/akazatest.png)
 
-![image](/blogs/2026/archs/akaza.png)
+![image](/media/2026/akaza.png)
 
-![image](/blogs/2026/archs/akaza test.png)
+![image](/media/2026/akazatest.png)
 
-![image](/blogs/2026/archs/akaza.png)
+![image](/media/2026/akaza.png)
 
-![image](/blogs/2026/archs/akaza test.png)
+![image](/media/2026/akazatest.png)

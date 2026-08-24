@@ -11,7 +11,7 @@ export function BodyLock({ locked }: BodyLockProps) {
     if (!locked) return;
 
     const body = document.body;
-    const mql = window.matchMedia("(min-width: 640px)");
+    const mql = window.matchMedia("(min-width: 768px)");
 
     function apply() {
       if (mql.matches) {

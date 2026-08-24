@@ -11,7 +11,7 @@ type AdminPanelProps = {
   categories: Category[];
   existingYears: string[];
   existingItems: PortfolioItem[];
-  blogImages: { src: string; year: string; slug: string; filename: string }[];
+  blogImages: { src: string; year: string; filename: string }[];
   blogYears: string[];
 };
 
@@ -82,7 +82,7 @@ export function AdminPanel({
             <header className="mx-auto mb-8 max-w-3xl text-center">
               <p className="mx-auto max-w-xl font-display text-sm leading-relaxed sm:text-base">
                 Write posts in markdown. Place images in
-                <code className="mx-1 rounded bg-[var(--panel-bg)] px-1 py-0.5 text-[var(--panel-fg)]">public/blogs/&lt;year&gt;/&lt;slug&gt;/</code>
+                <code className="mx-1 rounded bg-[var(--panel-bg)] px-1 py-0.5 text-[var(--panel-fg)]">public/media/&lt;year&gt;/</code>
                 and refresh to pick them from the image browser below.
               </p>
             </header>

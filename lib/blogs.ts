@@ -19,6 +19,7 @@ type BlogFrontmatter = {
 };
 
 const blogsDir = path.join(process.cwd(), "public", "blogs");
+const mediaDir = path.join(process.cwd(), "public", "media");
 const imageExtensions = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif", ".svg"]);
 
 function parseFrontmatter(raw: string): { frontmatter: BlogFrontmatter; body: string } {
@@ -75,6 +76,9 @@ export function getBlogPosts(): BlogPost[] {
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name);
 
+    const mediaYearDir = path.join(mediaDir, year);
+    const mediaImages = listImageFiles(mediaYearDir);
+
     for (const slug of slugs) {
       const postDir = path.join(yearDir, slug);
       const mdPath = path.join(postDir, "index.md");
@@ -84,11 +88,12 @@ export function getBlogPosts(): BlogPost[] {
       const raw = fs.readFileSync(mdPath, "utf8");
       const { frontmatter, body } = parseFrontmatter(raw);
 
-      const images = listImageFiles(postDir);
       const coverImage = frontmatter.cover
-        ? `/blogs/${year}/${slug}/${frontmatter.cover}`
-        : images.length > 0
-          ? `/blogs/${year}/${slug}/${images[0]}`
+        ? frontmatter.cover.startsWith("/media/")
+          ? frontmatter.cover
+          : `/media/${year}/${frontmatter.cover}`
+        : mediaImages.length > 0
+          ? `/media/${year}/${mediaImages[0]}`
           : undefined;
 
       posts.push({
@@ -111,38 +116,29 @@ export function getBlogPost(slug: string): BlogPost | null {
 }
 
 export function getBlogImages(year: string, slug: string): string[] {
-  const postDir = path.join(blogsDir, year, slug);
-  return listImageFiles(postDir).map((file) => `/blogs/${year}/${slug}/${file}`);
+  const mediaYearDir = path.join(mediaDir, year);
+  return listImageFiles(mediaYearDir).map((file) => `/media/${year}/${file}`);
 }
 
-export function getAllBlogImages(): { src: string; year: string; slug: string; filename: string }[] {
-  if (!fs.existsSync(blogsDir)) return [];
+export function getAllBlogImages(): { src: string; year: string; filename: string }[] {
+  if (!fs.existsSync(mediaDir)) return [];
 
-  const result: { src: string; year: string; slug: string; filename: string }[] = [];
+  const result: { src: string; year: string; filename: string }[] = [];
 
   const years = fs
-    .readdirSync(blogsDir, { withFileTypes: true })
+    .readdirSync(mediaDir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory() && /^\d{4}$/.test(entry.name))
     .map((entry) => entry.name);
 
   for (const year of years) {
-    const yearDir = path.join(blogsDir, year);
-    const slugs = fs
-      .readdirSync(yearDir, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => entry.name);
-
-    for (const slug of slugs) {
-      const postDir = path.join(yearDir, slug);
-      const files = listImageFiles(postDir);
-      for (const filename of files) {
-        result.push({
-          src: `/blogs/${year}/${slug}/${filename}`,
-          year,
-          slug,
-          filename
-        });
-      }
+    const mediaYearDir = path.join(mediaDir, year);
+    const files = listImageFiles(mediaYearDir);
+    for (const filename of files) {
+      result.push({
+        src: `/media/${year}/${filename}`,
+        year,
+        filename
+      });
     }
   }
 
