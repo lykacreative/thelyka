@@ -3,7 +3,7 @@ import type { Category } from "@/lib/portfolio";
 export const categoryLabels: Record<Category, string> = {
   design: "Design",
   reviews: "Reviews",
-  sketches: "Art"
+  arts: "Art"
 };
 
 export const introText = "I make art, posters, and edits. I hope you enjoy what I have to offer.";

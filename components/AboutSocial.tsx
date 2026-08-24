@@ -17,11 +17,11 @@ const iconMap = {
 };
 
 const socialLinks = [
-  { label: 'Telegram', href: 'https://t.me/' },
-  { label: 'Instagram', href: 'https://instagram.com/' },
-  { label: 'YouTube', href: 'https://youtube.com/' },
-  { label: 'Pinterest', href: 'https://pinterest.com/' },
-  { label: 'X', href: 'https://x.com/' },
+ { label: 'Telegram', href: 'https://t.me/Lykamimics' },
+{ label: 'Instagram', href: 'https://www.instagram.com/Lykamimics/' },
+{ label: 'YouTube', href: 'https://www.youtube.com/@Lykamimics' },
+{ label: 'Pinterest', href: 'https://www.pinterest.com/Lykamimics/' },
+{ label: 'X', href: 'https://x.com/Lykamimics' },
 ] as const;
 
 export function AboutSocial() {

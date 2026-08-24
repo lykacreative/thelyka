@@ -38,7 +38,7 @@ export default function Image() {
             marginTop: 16
           }}
         >
-          design · sketches · reviews
+          design · art · reviews
         </div>
       </div>
     ),

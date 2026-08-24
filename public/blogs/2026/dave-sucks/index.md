@@ -12,4 +12,4 @@ Hello *there*, thanks for reading my **blog**
 - I love you
 - Or I might not
 
-![image](/blogs/2026/archs/akaza.png)
+![image](/media/2026/akaza.png)

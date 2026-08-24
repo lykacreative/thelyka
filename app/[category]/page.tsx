@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { GalleryGrid } from "@/components/GalleryGrid";
+import { ArtGalleryGrid } from "@/components/ArtGalleryGrid";
+import { ReviewGalleryGrid } from "@/components/ReviewGalleryGrid";
 import { categories, getItemsByCategory, type Category } from "@/lib/portfolio";
 
 type CategoryPageProps = {
@@ -12,11 +14,13 @@ type CategoryPageProps = {
 const categoryDescriptions: Record<Category, string> = {
   design: "Design work and visual experiments by Lyka Mimics.",
   reviews: "Reviews and critiques by Lyka Mimics.",
-  sketches: "Sketches and drawings by Lyka Mimics."
+  arts: "Art and drawings by Lyka Mimics."
 };
 
 export function generateStaticParams() {
-  return categories.map((category) => ({ category }));
+  return categories
+    .filter((category) => category !== "arts")
+    .map((category) => ({ category }));
 }
 
 export async function generateMetadata({ params }: CategoryPageProps): Promise<Metadata> {
@@ -43,7 +47,15 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
   }
 
   const category = categoryParam as Category;
-  const items = getItemsByCategory(category);
+  const items = await getItemsByCategory(category);
+
+  if (category === "arts") {
+    return <ArtGalleryGrid items={items} />;
+  }
+
+  if (category === "reviews") {
+    return <ReviewGalleryGrid items={items} />;
+  }
 
   return <GalleryGrid category={category} items={items} />;
 }

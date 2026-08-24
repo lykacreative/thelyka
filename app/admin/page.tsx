@@ -14,7 +14,7 @@ export default async function AdminPage() {
     redirect("/admin/login?next=/admin");
   }
 
-  const items = getPortfolioItems();
+  const items = await getPortfolioItems();
   const knownYears = Array.from(
     new Set(items.map((item) => item.year).filter((year) => /^\d{4}$/.test(year)))
   ).sort((a, b) => b.localeCompare(a));

@@ -37,7 +37,7 @@ export function ThemeToggle() {
     <button
       type="button"
       onClick={toggleTheme}
-      className="group fixed right-3 top-3 z-40 flex h-9 w-[68px] items-center overflow-hidden rounded-full border border-[var(--frame)] bg-[var(--page-bg-solid)] p-[3px] shadow-[0_10px_30px_var(--shadow)] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)] sm:right-4 sm:top-4 sm:h-11 sm:w-[84px] sm:p-1"
+      className="group fixed right-2.5 top-2.5 z-40 flex h-8 w-[62px] items-center overflow-hidden rounded-full border border-[var(--frame)] bg-[var(--page-bg-solid)] p-[2px] shadow-[0_8px_24px_var(--shadow)] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)] sm:right-4 sm:top-4 sm:h-11 sm:w-[84px] sm:p-1"
       aria-label={`Switch to ${isDark ? "light" : "dark"} mode`}
       title={`Switch to ${isDark ? "light" : "dark"} mode`}
     >
@@ -53,22 +53,22 @@ export function ThemeToggle() {
 
       <span
         aria-hidden="true"
-        className="relative z-10 flex h-7 w-7 shrink-0 items-center justify-center text-[var(--page-fg)]/30 transition group-hover:text-[var(--page-fg)]/60 sm:h-9 sm:w-9"
+        className="relative z-10 flex h-6 w-6 shrink-0 items-center justify-center text-[var(--page-fg)]/30 transition group-hover:text-[var(--page-fg)]/60 sm:h-9 sm:w-9"
       >
-        <FaSun className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+        <FaSun className="h-3 w-3 sm:h-4 sm:w-4" />
       </span>
 
       <span
         aria-hidden="true"
-        className="relative z-10 ml-auto flex h-7 w-7 shrink-0 items-center justify-center text-[var(--page-fg)]/30 transition group-hover:text-[var(--page-fg)]/60 sm:h-9 sm:w-9"
+        className="relative z-10 ml-auto flex h-6 w-6 shrink-0 items-center justify-center text-[var(--page-fg)]/30 transition group-hover:text-[var(--page-fg)]/60 sm:h-9 sm:w-9"
       >
-        <FaMoon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+        <FaMoon className="h-3 w-3 sm:h-4 sm:w-4" />
       </span>
 
       <motion.span
         layout
         aria-hidden="true"
-        className="lyka-theme-thumb absolute top-[3px] z-20 grid h-7 w-7 place-items-center rounded-full border border-[var(--frame)] bg-[var(--panel-bg)] text-[var(--panel-fg)] shadow-[0_6px_18px_var(--shadow)] sm:top-1 sm:h-9 sm:w-9"
+        className="lyka-theme-thumb absolute top-[2px] z-20 grid h-6 w-6 place-items-center rounded-full border border-[var(--frame)] bg-[var(--panel-bg)] text-[var(--panel-fg)] shadow-[0_4px_12px_var(--shadow)] sm:top-1 sm:h-9 sm:w-9"
         initial={false}
         animate={{
           rotate: isDark ? 360 : 0,
@@ -89,10 +89,10 @@ export function ThemeToggle() {
             className="grid place-items-center"
           >
             {isDark ? (
-              <FaMoon className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+              <FaMoon className="h-2.5 w-2.5 sm:h-3.5 sm:w-3.5" />
             ) : (
               <span className="relative grid place-items-center">
-                <FaSun className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                <FaSun className="h-2.5 w-2.5 sm:h-3.5 sm:w-3.5" />
                 <motion.span
                   aria-hidden="true"
                   className="pointer-events-none absolute h-[140%] w-[140%]"

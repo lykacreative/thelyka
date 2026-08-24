@@ -106,14 +106,13 @@ export function CategoryScroller({ category, items, direction }: CategoryScrolle
   });
 
   return (
-    <section className="flex h-full min-h-0 min-w-0 flex-col">
+    <section className="min-w-0 md:flex md:h-full md:min-h-0 md:flex-col">
       {/* Title stays fixed height */}
       <Link
-        href={`/${category}`}
-        className="group mb-2 flex shrink-0 items-center justify-center gap-1.5 text-center font-display text-[13px] font-normal leading-none tracking-normal text-[var(--page-fg)] transition hover:-translate-y-0.5 hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)] sm:mb-4 sm:gap-2 sm:text-[28px]"
-        aria-label={`Open ${categoryLabels[category]} gallery`}
-      >
-        <span>{categoryLabels[category]}</span>
+      href={`/${category}`}
+      className="group mb-2 flex shrink-0 items-center justify-center gap-1.5 text-center font-display text-[12px] font-normal leading-none tracking-normal text-[var(--page-fg)] transition hover:-translate-y-0.5 hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)] sm:mb-4 sm:gap-2 sm:text-[24px]"
+    >
+            <span>{categoryLabels[category]}</span>
         <svg
           aria-hidden="true"
           className="h-3 w-3 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 sm:h-5 sm:w-5"
@@ -130,7 +129,19 @@ export function CategoryScroller({ category, items, direction }: CategoryScrolle
 
       {/* This now takes the remaining height instead of a fixed vh */}
       <div
-        className="min-h-0 flex-1 overflow-hidden border-x-[5px] border-[var(--page-fg)] bg-[var(--page-bg-solid)] sm:border-x-[7px]"
+        className="
+                h-[260px]
+                overflow-hidden
+                border-x-[5px]
+                border-[var(--page-fg)]
+                bg-[var(--page-bg-solid)]
+
+                md:min-h-0
+                md:flex-1
+                md:h-auto
+
+                sm:border-x-[7px]
+                "
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
       >

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { isArtType } from "@/lib/art-types";
+import { isReviewType } from "@/lib/review-types";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
 import { categories, type Category } from "@/lib/portfolio";
 
@@ -17,6 +19,8 @@ type MetadataEntry = {
   title?: string;
   note?: string;
   date?: string;
+  artType?: string;
+  reviewType?: string;
 };
 
 function isCategory(value: string): value is Category {
@@ -47,20 +51,31 @@ async function writeMetadata(items: MetadataEntry[]) {
 
 function parseSrc(src: string) {
   if (!src.startsWith("/portfolio/")) return null;
-  const segments = src.replace(/^\/portfolio\//, "").split("/").filter(Boolean);
+  const relative = src.replace(/^\/portfolio\//, "");
+  if (!relative || relative.includes("..")) return null;
+
+  const segments = relative.split("/").filter(Boolean);
   if (segments.length < 3) return null;
-  const [category, year, ...rest] = segments;
+
+  const category = segments[0];
   if (!isCategory(category)) return null;
-  if (!/^\d{4}$/.test(year)) return null;
-  const filename = rest.join("/");
+
+  // Find the first 4-digit segment as year (supports nested layouts like arts/sketches/2024)
+  const yearIndex = segments.findIndex((s) => /^\d{4}$/.test(s));
+  if (yearIndex === -1) return null;
+
+  const year = segments[yearIndex];
+  const tail = segments.slice(yearIndex + 1).join("/");
+  const filename = tail.split("/").pop() || "";
   if (!filename || filename.includes("..")) return null;
-  return { category: category as Category, year, filename };
+
+  return { category: category as Category, year, filename, relative };
 }
 
 function resolveFilePath(src: string) {
   const parsed = parseSrc(src);
   if (!parsed) return null;
-  const absolute = path.join(portfolioDir, parsed.category, parsed.year, parsed.filename);
+  const absolute = path.join(portfolioDir, parsed.relative);
   const resolved = path.resolve(absolute);
   if (!resolved.startsWith(path.resolve(portfolioDir))) return null;
   return resolved;
@@ -84,7 +99,11 @@ function sanitizeNote(value: string) {
 }
 
 export async function GET() {
-  if (!(await isAdminAuthenticated())) {
+  try {
+    if (!(await isAdminAuthenticated())) {
+      return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
+    }
+  } catch {
     return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
   }
   const metadata = await readMetadata();
@@ -98,10 +117,16 @@ type UpdateBody = {
   note?: string;
   category?: string;
   year?: string;
+  artType?: string;
+  reviewType?: string;
 };
 
 export async function PATCH(request: Request) {
-  if (!(await isAdminAuthenticated())) {
+  try {
+    if (!(await isAdminAuthenticated())) {
+      return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
+    }
+  } catch {
     return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
   }
 
@@ -166,6 +191,18 @@ export async function PATCH(request: Request) {
     }
     next.category = body.category;
   }
+  if (typeof body.artType === "string") {
+    if (!isArtType(body.artType)) {
+      return NextResponse.json({ error: "Invalid art type." }, { status: 400 });
+    }
+    next.artType = body.artType;
+  }
+  if (typeof body.reviewType === "string") {
+    if (!isReviewType(body.reviewType)) {
+      return NextResponse.json({ error: "Invalid review type." }, { status: 400 });
+    }
+    next.reviewType = body.reviewType;
+  }
 
   metadata[index] = next;
   await writeMetadata(metadata);
@@ -179,7 +216,11 @@ type DeleteBody = {
 };
 
 export async function DELETE(request: Request) {
-  if (!(await isAdminAuthenticated())) {
+  try {
+    if (!(await isAdminAuthenticated())) {
+      return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
+    }
+  } catch {
     return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
   }
 
