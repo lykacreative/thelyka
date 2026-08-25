@@ -28,7 +28,7 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
   const category = categoryParam as Category;
   if (!categories.includes(category)) return {};
 
-  const title = category.charAt(0).toUpperCase() + category.slice(1);
+  const title = category === "arts" ? "Art" : category.charAt(0).toUpperCase() + category.slice(1);
   return {
     title,
     description: categoryDescriptions[category],

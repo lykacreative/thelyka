@@ -64,13 +64,6 @@ export function AdminPanel({
 
         {tab === "portfolio" ? (
           <>
-            <header className="mx-auto mb-8 max-w-3xl text-center">
-              <p className="mx-auto max-w-xl font-display text-sm leading-relaxed sm:text-base">
-                Pick an artwork, then set its title, date, and artist note. Place new image files in
-                <code className="mx-1 rounded bg-[var(--panel-bg)] px-1 py-0.5 text-[var(--panel-fg)]">public/portfolio/&lt;category&gt;/&lt;year&gt;/</code>
-                and refresh — they show up here automatically.
-              </p>
-            </header>
             <PortfolioManager
               categories={categories}
               existingYears={existingYears}
@@ -79,13 +72,6 @@ export function AdminPanel({
           </>
         ) : (
           <>
-            <header className="mx-auto mb-8 max-w-3xl text-center">
-              <p className="mx-auto max-w-xl font-display text-sm leading-relaxed sm:text-base">
-                Write posts in markdown. Place images in
-                <code className="mx-1 rounded bg-[var(--panel-bg)] px-1 py-0.5 text-[var(--panel-fg)]">public/media/&lt;year&gt;/</code>
-                and refresh to pick them from the image browser below.
-              </p>
-            </header>
             <BlogEditor allImages={blogImages} years={blogYears} />
           </>
         )}

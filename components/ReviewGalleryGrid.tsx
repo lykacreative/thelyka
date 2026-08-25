@@ -90,7 +90,7 @@ export function ReviewGalleryGrid({ items, reviewType }: ReviewGalleryGridProps)
         <nav className="relative h-[58px]">
           <Link
             href="/"
-            className="absolute left-0 top-1 grid h-[37px] w-[37px] place-items-center rounded-full transition hover:-translate-x-1 hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
+            className="absolute left-0 top-1.5 grid h-7 w-7 place-items-center rounded-full transition hover:-translate-x-1 hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)] sm:top-2 sm:h-9 sm:w-9"
             aria-label="Back to homepage"
           >
             <span
@@ -100,11 +100,11 @@ export function ReviewGalleryGrid({ items, reviewType }: ReviewGalleryGridProps)
           </Link>
 
           {/* Category tabs */}
-          <div className="absolute left-1/2 top-0 flex -translate-x-1/2 items-center gap-3">
+          <div className="absolute left-1/2 top-0 flex -translate-x-1/2 flex-wrap items-center justify-center gap-2">
             <button
               onClick={goToAll}
               className={`
-                px-5 py-2 text-sm font-medium transition
+                px-3 py-1.5 text-xs font-medium transition sm:px-5 sm:py-2 sm:text-sm
                 ${
                   !reviewType
                     ? 'bg-[var(--panel-bg)] text-[var(--panel-fg)] shadow-sm'
@@ -122,7 +122,7 @@ export function ReviewGalleryGrid({ items, reviewType }: ReviewGalleryGridProps)
                   key={type}
                   onClick={() => handleTypeClick(type)}
                   className={`
-                    px-5 py-2 text-sm font-medium transition
+                    px-3 py-1.5 text-xs font-medium transition sm:px-5 sm:py-2 sm:text-sm
                     ${
                       isActive
                         ? 'bg-[var(--panel-bg)] text-[var(--panel-fg)] shadow-sm'

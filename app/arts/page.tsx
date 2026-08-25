@@ -3,7 +3,7 @@ import { ArtGalleryGrid } from '@/components/ArtGalleryGrid';
 import { getItemsByCategory } from '@/lib/portfolio';
 
 export const metadata: Metadata = {
-  title: 'Art | Lyka Mimics',
+  title: 'Art',
   description: 'A collection of sketches, photography, and digital art by Lyka Mimics.',
 };
 

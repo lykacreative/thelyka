@@ -51,7 +51,7 @@ export function GalleryGrid({ category, items }: GalleryGridProps) {
         <nav className='relative h-[58px]'>
           <Link
             href='/'
-            className='absolute left-0 top-1 grid h-[37px] w-[37px] place-items-center rounded-full transition hover:-translate-x-1 hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]'
+            className='absolute left-0 top-1.5 grid h-7 w-7 place-items-center rounded-full transition hover:-translate-x-1 hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)] sm:top-2 sm:h-9 sm:w-9'
             aria-label='Back to homepage'
           >
             <span
