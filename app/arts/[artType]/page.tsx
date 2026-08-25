@@ -34,10 +34,10 @@ export async function generateMetadata({
   }
 
   return {
-    title: `${artType} | Art`,
+    title: artType,
     description: `${artType} by Lyka Mimics.`,
     openGraph: {
-      title: `${artType} | Art`,
+      title: artType,
       description: `${artType} by Lyka Mimics.`,
       type: 'website',
     },

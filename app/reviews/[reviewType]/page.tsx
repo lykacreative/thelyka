@@ -34,10 +34,10 @@ export async function generateMetadata({
   }
 
   return {
-    title: `${reviewType} | Reviews`,
+    title: reviewType,
     description: `${reviewType} reviews by Lyka Mimics.`,
     openGraph: {
-      title: `${reviewType} | Reviews`,
+      title: reviewType,
       description: `${reviewType} reviews by Lyka Mimics.`,
       type: 'website',
     },
