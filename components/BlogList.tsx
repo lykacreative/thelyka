@@ -10,12 +10,21 @@ type BlogListProps = {
 };
 
 export function BlogList({ posts }: BlogListProps) {
-  const years = Array.from(new Set(posts.map((p) => p.year))).sort((a, b) => b.localeCompare(a));
+  const years = Array.from(
+    new Set(posts.map((p) => p.year))
+  ).sort((a, b) => b.localeCompare(a));
+
   const [activeYear, setActiveYear] = useState<string | null>(null);
 
-  const filtered = activeYear ? posts.filter((p) => p.year === activeYear) : posts;
+  const filtered = activeYear
+    ? posts.filter((p) => p.year === activeYear)
+    : posts;
+
   const grouped = years
-    .map((year) => ({ year, posts: filtered.filter((p) => p.year === year) }))
+    .map((year) => ({
+      year,
+      posts: filtered.filter((p) => p.year === year),
+    }))
     .filter((g) => g.posts.length > 0);
 
   return (
@@ -33,6 +42,7 @@ export function BlogList({ posts }: BlogListProps) {
           >
             All
           </button>
+
           {years.map((year) => (
             <button
               key={year}
@@ -57,9 +67,13 @@ export function BlogList({ posts }: BlogListProps) {
               <h2 className="mb-6 border-b border-[var(--frame)] pb-3 font-display text-2xl font-normal tracking-normal sm:text-3xl">
                 {group.year}
               </h2>
-              <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+
+              <ul className="columns-1 gap-[18px] sm:columns-2 lg:columns-3">
                 {group.posts.map((post) => (
-                  <li key={post.slug}>
+                  <li
+                    key={post.slug}
+                    className="mb-[18px] break-inside-avoid"
+                  >
                     <Link
                       href={`/blogs/${post.slug}`}
                       className="group block border border-[var(--frame)] bg-transparent transition hover:opacity-80"
@@ -79,21 +93,28 @@ export function BlogList({ posts }: BlogListProps) {
                           </span>
                         )}
                       </span>
+
                       <span className="block p-4">
                         <span className="flex items-center gap-2 font-sans text-[10px] font-medium uppercase tracking-widest text-[var(--modal-fg)]/50">
                           <time>{post.date}</time>
                         </span>
+
                         <span className="mt-2 block font-display text-lg font-normal leading-snug tracking-normal text-[var(--page-fg)] sm:text-xl">
                           {post.title}
                         </span>
+
                         {post.excerpt ? (
                           <span className="mt-2 block font-sans text-sm leading-relaxed text-[var(--modal-fg)]/60 line-clamp-2">
                             {post.excerpt}
                           </span>
                         ) : null}
+
                         <span className="mt-3 inline-flex items-center gap-1.5 border-b border-[var(--frame)] pb-0.5 font-sans text-[11px] font-medium uppercase tracking-normal text-[var(--page-fg)] lg:opacity-0 lg:transition lg:group-hover:opacity-100">
                           Read more
-                          <span className="h-2.5 w-2.5 bg-[var(--page-fg)] [mask:url('/assets/figma-back.svg')_center/contain_no-repeat] [mask-position:center] [mask-size:10px] rotate-180" aria-hidden="true" />
+                          <span
+                            className="h-2.5 w-2.5 bg-[var(--page-fg)] [mask:url('/assets/figma-back.svg')_center/contain_no-repeat] [mask-position:center] [mask-size:10px] rotate-180"
+                            aria-hidden="true"
+                          />
                         </span>
                       </span>
                     </Link>
@@ -108,9 +129,13 @@ export function BlogList({ posts }: BlogListProps) {
           <p className="font-display text-2xl tracking-normal text-[var(--modal-fg)]/60">
             No posts yet.
           </p>
+
           <p className="mt-2 font-sans text-sm tracking-normal text-[var(--modal-fg)]/50">
             Add your first blog from the{" "}
-            <Link href="/admin" className="underline hover:text-[var(--panel-bg)]">
+            <Link
+              href="/admin"
+              className="underline hover:text-[var(--panel-bg)]"
+            >
               admin
             </Link>
             .

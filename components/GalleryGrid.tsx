@@ -59,7 +59,7 @@ export function GalleryGrid({ category, items }: GalleryGridProps) {
               aria-hidden='true'
             />
           </Link>
-          <h1 className='absolute left-1/2 top-0 -translate-x-1/2 font-display text-[42px] font-normal leading-none tracking-normal sm:text-[50px]'>
+          <h1 className='absolute left-1/2 top-0 -translate-x-1/2 font-display text-[35px] font-normal leading-none tracking-normal '>
             {categoryLabels[category]}
           </h1>
         </nav>
