@@ -92,7 +92,7 @@ export function ArtGalleryGrid({ items, artType }: ArtGalleryGridProps) {
       <BodyLock locked={false} />
       <ThemeToggle />
       <section className="mx-auto min-h-screen max-w-[1358px] px-5 pb-20 pt-14 sm:px-8 lg:px-16 lg:pt-[86px]">
-        <nav className="relative h-[58px]">
+        <nav className="relative pt-8 pb-2 sm:pt-10 sm:pb-3">
           <Link
             href="/"
             className="absolute left-0 top-1.5 grid h-7 w-7 place-items-center rounded-full transition hover:-translate-x-1 hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)] sm:top-2 sm:h-9 sm:w-9"
@@ -105,15 +105,15 @@ export function ArtGalleryGrid({ items, artType }: ArtGalleryGridProps) {
           </Link>
 
           {/* Category tabs - moved up to where ART text was */}
-          <div className="absolute left-1/2 top-0 flex -translate-x-1/2 flex-wrap items-center justify-center gap-2">
+          <div className="flex flex-wrap items-center justify-center gap-2 pl-10 sm:pl-12">
             <button
               onClick={goToAll}
               className={`
                 px-3 py-1.5 text-xs font-medium transition sm:px-5 sm:py-2 sm:text-sm
                 ${
                   !artType
-                    ? 'bg-[var(--panel-bg)] text-[var(--panel-fg)] shadow-sm'
-                    : 'border border-[var(--frame)]/40 bg-transparent text-[var(--page-fg)] hover:bg-[var(--panel-bg)]/10'
+                    ? 'border border-[var(--frame)] bg-[var(--panel-bg)] text-[var(--panel-fg)]'
+                    : 'border border-[var(--frame)] bg-transparent text-[var(--page-fg)] hover:bg-[var(--panel-bg)]/10'
                 }
               `}
             >
@@ -130,8 +130,8 @@ export function ArtGalleryGrid({ items, artType }: ArtGalleryGridProps) {
                     px-3 py-1.5 text-xs font-medium transition sm:px-5 sm:py-2 sm:text-sm
                     ${
                       isActive
-                        ? 'bg-[var(--panel-bg)] text-[var(--panel-fg)] shadow-sm'
-                        : 'border border-[var(--frame)]/40 bg-transparent text-[var(--page-fg)] hover:bg-[var(--panel-bg)]/10'
+                        ? 'border border-[var(--frame)] bg-[var(--panel-bg)] text-[var(--panel-fg)]'
+                        : 'border border-[var(--frame)] bg-transparent text-[var(--page-fg)] hover:bg-[var(--panel-bg)]/10'
                     }
                   `}
                 >
@@ -143,7 +143,7 @@ export function ArtGalleryGrid({ items, artType }: ArtGalleryGridProps) {
         </nav>
 
         {/* Year selector - moved up */}
-        <header className="mt-6 text-center">
+        <header className="text-center">
           <div className="mb-5 flex items-center justify-center gap-3">
               <button
                 type="button"
@@ -179,11 +179,6 @@ export function ArtGalleryGrid({ items, artType }: ArtGalleryGridProps) {
                 ? `No ${artType} uploaded yet.`
                 : 'No pieces found for this filter.'}
             </p>
-            <p className="mt-3 font-sans text-xs uppercase tracking-normal text-[var(--page-fg)]/50">
-              {typeItems.length === 0 && artType
-                ? 'Upload artwork from the admin panel to see it here.'
-                : 'Try a different year or switch between All, Sketches, Photography, and Digital Art.'}
-            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-3">
@@ -207,6 +202,7 @@ function ArtCard({ item, onOpen }: { item: PortfolioItem; onOpen: () => void }) 
     <button
       type="button"
       onClick={onOpen}
+      onContextMenu={(event) => event.preventDefault()}
       className="group block text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
     >
       <span className="relative block aspect-[4/5] w-full overflow-hidden">

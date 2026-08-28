@@ -663,10 +663,10 @@ Write your text here. **Markdown** is supported.
             </div>
             <div className="max-h-[700px] overflow-y-auto">
               {form.title || form.content ? (
-                <article>
+                <article onContextMenu={(event) => event.preventDefault()}>
                   <header className="mb-6 border-b border-[var(--frame)] pb-6">
                     {form.date ? (
-                      <time className="font-sans text-xs font-medium uppercase tracking-normal text-[var(--panel-bg)]">
+                      <time className="font-sans text-xs font-medium uppercase tracking-normal text-[var(--page-fg)]/70">
                         {form.date}
                       </time>
                     ) : null}

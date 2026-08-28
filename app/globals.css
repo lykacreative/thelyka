@@ -262,6 +262,7 @@ a {
   aspect-ratio: 4 / 3;
   align-self: start;
   height: auto;
+  border: 1px solid var(--frame);
 }
 
 @media (min-width: 768px) {
@@ -433,4 +434,13 @@ a {
   :root[data-theme="dark"] .lyka-theme-thumb {
     left: calc(100% - 40px);
   }
+}
+
+img {
+  user-drag: none;
+  -webkit-user-drag: none;
+}
+
+img::selection {
+  background: transparent;
 }

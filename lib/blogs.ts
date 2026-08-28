@@ -9,6 +9,7 @@ export type BlogPost = {
   content: string;
   year: string;
   coverImage?: string;
+  readTime: number;
 };
 
 type BlogFrontmatter = {
@@ -48,6 +49,12 @@ function titleFromSlug(slug: string) {
   return slug
     .replace(/[-_]+/g, " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function calculateReadTime(content: string): number {
+  const words = content.trim().split(/\s+/).filter(Boolean).length;
+  const wordsPerMinute = 200;
+  return Math.max(1, Math.ceil(words / wordsPerMinute));
 }
 
 function listImageFiles(dir: string): string[] {
@@ -103,7 +110,8 @@ export function getBlogPosts(): BlogPost[] {
         excerpt: frontmatter.excerpt ?? "",
         content: body,
         year,
-        coverImage
+        coverImage,
+        readTime: calculateReadTime(body)
       });
     }
   }

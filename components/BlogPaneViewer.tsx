@@ -89,10 +89,10 @@ export function BlogPaneViewer({
               transition={{ type: "spring", stiffness: 260, damping: 28 }}
               onMouseDown={(event) => event.stopPropagation()}
             >
-              <article className="border border-[var(--frame)] bg-[var(--page-bg-solid)] px-5 pb-10 pt-7 shadow-[0_24px_80px_var(--shadow)] sm:px-8 sm:pb-14 sm:pt-9">
+              <article onContextMenu={(event) => event.preventDefault()} className="border border-[var(--frame)] bg-[var(--page-bg-solid)] px-5 pb-10 pt-7 shadow-[0_24px_80px_var(--shadow)] sm:px-8 sm:pb-14 sm:pt-9">
                 <header className="mb-8 border-b border-[var(--frame)] pb-6">
                   {date ? (
-                    <time className="font-sans text-xs font-medium uppercase tracking-normal text-[var(--panel-bg)]">
+                    <time className="font-sans text-xs font-medium uppercase tracking-normal text-[var(--page-fg)]/70">
                       {date}
                     </time>
                   ) : null}

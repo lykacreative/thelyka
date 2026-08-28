@@ -80,7 +80,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         </nav>
 
         <header className="mb-10 border-b border-[var(--frame)] pb-8">
-          <time className="font-sans text-xs font-medium uppercase tracking-normal text-[var(--panel-bg)]">
+          <time className="font-sans text-xs font-medium uppercase tracking-normal text-[var(--page-fg)]/70">
             {post.date}
           </time>
           <h1 className="mt-3 font-display text-[32px] font-normal leading-[1.1] tracking-normal sm:text-[48px]">

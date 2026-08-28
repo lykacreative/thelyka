@@ -51,6 +51,8 @@ export function AboutSocial() {
               <a
                 key={social.label}
                 href={social.href}
+                target='_blank'
+                rel='noopener noreferrer'
                 className='grid h-5 w-5 place-items-center rounded-full text-[17px] text-[var(--page-fg)] transition hover:-translate-y-1 hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)] sm:h-8 sm:w-8 sm:text-[30px]'
                 aria-label={social.label}
               >

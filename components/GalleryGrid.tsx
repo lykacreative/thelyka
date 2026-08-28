@@ -48,7 +48,7 @@ export function GalleryGrid({ category, items }: GalleryGridProps) {
       <BodyLock locked={false} />
       <ThemeToggle />
       <section className='mx-auto min-h-screen max-w-[1358px] px-5 pb-20 pt-14 sm:px-8 lg:px-16 lg:pt-[86px]'>
-        <nav className='relative h-[58px]'>
+        <nav className='relative pt-8 pb-2 sm:pt-10 sm:pb-3'>
           <Link
             href='/'
             className='absolute left-0 top-1.5 grid h-7 w-7 place-items-center rounded-full transition hover:-translate-x-1 hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)] sm:top-2 sm:h-9 sm:w-9'
@@ -59,7 +59,7 @@ export function GalleryGrid({ category, items }: GalleryGridProps) {
               aria-hidden='true'
             />
           </Link>
-          <h1 className='absolute left-1/2 top-0 -translate-x-1/2 font-display text-[35px] font-normal leading-none tracking-normal '>
+          <h1 className='text-center font-display text-[42px] font-normal leading-none tracking-normal sm:text-[50px]'>
             {categoryLabels[category]}
           </h1>
         </nav>
@@ -101,6 +101,7 @@ export function GalleryGrid({ category, items }: GalleryGridProps) {
                 key={item.src}
                 type='button'
                 onClick={() => setActiveItem(item)}
+                onContextMenu={(event) => event.preventDefault()}
                 className='group block text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)] shadow-md'
               >
                 <span className='relative block aspect-square overflow-hidden transition duration-300 group-hover:scale-[0.992] group-hover:opacity-95'>

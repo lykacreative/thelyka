@@ -81,7 +81,7 @@ export function Lightbox({ item, onClose }: LightboxProps) {
           >
             {/* IMAGE + CLOSE BUTTON */}
             {currentDimensions && (
-              <div className="relative w-full shrink-0 md:w-auto">
+              <div onContextMenu={(event) => event.preventDefault()} className="relative w-full shrink-0 md:w-auto">
                 {/* CLOSE BUTTON – top-left corner of the image */}
                 <button
                   type="button"
@@ -126,8 +126,8 @@ export function Lightbox({ item, onClose }: LightboxProps) {
                 lg:border-l lg:border-[var(--frame)]
               "
             >
-              <div className="p-6 px-4">
-                <p className="font-sans text-xs font-medium uppercase tracking-normal text-[var(--panel-bg)]">
+                <div className="p-6 px-4">
+                <p className="font-sans text-xs font-medium uppercase tracking-normal text-[var(--modal-fg)]">
                   {categoryLabels[item.category]}
                 </p>
                 <h2 className="mt-4 break-words font-display text-[28px] font-semibold leading-[1.1] tracking-normal text-[var(--modal-fg)] sm:text-[44px]">
@@ -137,7 +137,7 @@ export function Lightbox({ item, onClose }: LightboxProps) {
 
               <dl className="grid content-start border-y border-[var(--frame)] font-sans text-sm">
                 <div className="grid grid-cols-[5.5rem_1fr] border-b border-[var(--frame)]">
-                  <dt className="p-3 uppercase tracking-normal text-[var(--panel-bg)] sm:p-4">
+                  <dt className="p-3 uppercase tracking-normal text-[var(--modal-fg)] sm:p-4">
                     year
                   </dt>
                   <dd className="border-l border-[var(--frame)] p-3 text-[var(--modal-fg)] sm:p-4">
@@ -147,7 +147,7 @@ export function Lightbox({ item, onClose }: LightboxProps) {
 
                 {item.date ? (
                   <div className="grid grid-cols-[5.5rem_1fr]">
-                    <dt className="p-3 uppercase tracking-normal text-[var(--panel-bg)] sm:p-4">
+                    <dt className="p-3 uppercase tracking-normal text-[var(--modal-fg)] sm:p-4">
                       date
                     </dt>
                     <dd className="border-l border-[var(--frame)] p-3 text-[var(--modal-fg)] sm:p-4">
@@ -158,7 +158,7 @@ export function Lightbox({ item, onClose }: LightboxProps) {
               </dl>
 
               <div className="grow p-6">
-                <p className="font-sans text-xs font-medium uppercase tracking-normal text-[var(--panel-bg)]">
+                <p className="font-sans text-xs font-medium uppercase tracking-normal text-[var(--modal-fg)]">
                   artist note
                 </p>
                 <p className="mt-4 font-sans text-sm leading-6 text-[var(--modal-fg)]">
