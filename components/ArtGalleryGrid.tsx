@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { BodyLock } from '@/components/BodyLock';
 import { Lightbox } from '@/components/Lightbox';
@@ -21,10 +20,10 @@ type ArtGalleryGridProps = {
 };
 
 export function ArtGalleryGrid({ items, artType }: ArtGalleryGridProps) {
-  const router = useRouter();
+  const [selectedArtType, setSelectedArtType] = useState<ArtType | null>(artType ?? null);
+  const [selectedYear, setSelectedYear] = useState<string | null>(null);
+  const [activeItem, setActiveItem] = useState<PortfolioItem | null>(null);
 
-  // Derive years from the actual items so new years (2026, 2027, 2028...)
-  // appear automatically and the newest year is shown by default.
   const years = useMemo(
     () =>
       Array.from(new Set(items.map((item) => item.year))).sort((a, b) =>
@@ -33,9 +32,24 @@ export function ArtGalleryGrid({ items, artType }: ArtGalleryGridProps) {
     [items],
   );
 
-  // Hydration-safe: start with null, then set the newest year after mount.
-  const [selectedYear, setSelectedYear] = useState<string | null>(null);
-  const [activeItem, setActiveItem] = useState<PortfolioItem | null>(null);
+  useEffect(() => {
+    setSelectedArtType(artType ?? null);
+  }, [artType]);
+
+  useEffect(() => {
+    function onPopState() {
+      const slug = window.location.pathname.split("/").pop();
+      if (slug === "arts") {
+        setSelectedArtType(null);
+        return;
+      }
+      const match = artTypes.find((type) => artPathForType(type).endsWith(`/${slug}`));
+      setSelectedArtType(match ?? null);
+    }
+
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
 
   useEffect(() => {
     if (selectedYear === null && years.length > 0) {
@@ -43,30 +57,33 @@ export function ArtGalleryGrid({ items, artType }: ArtGalleryGridProps) {
     }
   }, [selectedYear, years]);
 
-  // Items matching the current art-type filter (ignoring year) so we can
-  // show a friendly "No Sketches uploaded yet" message on the filter pages.
   const typeItems = useMemo(
-    () => (artType ? items.filter((item) => item.artType === artType) : items),
-    [items, artType],
+    () =>
+      selectedArtType
+        ? items.filter((item) => item.artType === selectedArtType)
+        : items,
+    [items, selectedArtType],
   );
 
   const filtered = useMemo(() => {
     return items.filter((item) => {
-      const typeMatch = artType ? item.artType === artType : true;
+      const typeMatch = selectedArtType ? item.artType === selectedArtType : true;
       const yearMatch =
         selectedYear === null
           ? true
           : item.year === selectedYear;
       return typeMatch && yearMatch;
     });
-  }, [items, artType, selectedYear]);
+  }, [items, selectedArtType, selectedYear]);
 
   const handleTypeClick = (type: ArtType) => {
-    router.push(artPathForType(type));
+    setSelectedArtType(type);
+    window.history.replaceState(null, "", artPathForType(type));
   };
 
   const goToAll = () => {
-    router.push('/arts');
+    setSelectedArtType(null);
+    window.history.replaceState(null, "", "/arts");
   };
 
   const currentYearIndex = selectedYear ? years.indexOf(selectedYear) : -1;
@@ -111,7 +128,7 @@ export function ArtGalleryGrid({ items, artType }: ArtGalleryGridProps) {
               className={`
                 px-3 py-1.5 text-xs font-medium transition sm:px-5 sm:py-2 sm:text-sm
                 ${
-                  !artType
+                  !selectedArtType
                     ? 'border border-[var(--frame)] bg-[var(--panel-bg)] text-[var(--panel-fg)]'
                     : 'border border-[var(--frame)] bg-transparent text-[var(--page-fg)] hover:bg-[var(--panel-bg)]/10'
                 }
@@ -120,7 +137,7 @@ export function ArtGalleryGrid({ items, artType }: ArtGalleryGridProps) {
               All
             </button>
             {artTypes.map((type) => {
-              const isActive = artType === type;
+              const isActive = selectedArtType === type;
 
               return (
                 <button
@@ -175,8 +192,8 @@ export function ArtGalleryGrid({ items, artType }: ArtGalleryGridProps) {
         {filtered.length === 0 ? (
           <div className="py-24 text-center">
             <p className="font-display text-2xl font-normal tracking-normal text-[var(--page-fg)] sm:text-3xl">
-              {typeItems.length === 0 && artType
-                ? `No ${artType} uploaded yet.`
+              {typeItems.length === 0 && selectedArtType
+                ? `No ${selectedArtType} uploaded yet.`
                 : 'No pieces found for this filter.'}
             </p>
           </div>

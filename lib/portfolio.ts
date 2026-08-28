@@ -1,5 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
+import { unstable_cache } from "next/cache";
+import { cache } from "react";
 import sharp from "sharp";
 import {
   artTypeSlugs,
@@ -263,7 +265,7 @@ function readMetadata() {
   }
 }
 
-export async function getPortfolioItems(): Promise<PortfolioItem[]> {
+async function scanPortfolioItems(): Promise<PortfolioItem[]> {
   const metadata = readMetadata();
   const items: PortfolioItem[] = [];
 
@@ -483,6 +485,14 @@ export async function getPortfolioItems(): Promise<PortfolioItem[]> {
     return (b.date ?? "").localeCompare(a.date ?? "");
   });
 }
+
+const getCachedPortfolioItems = unstable_cache(
+  scanPortfolioItems,
+  ["portfolio-items"],
+  { revalidate: 300, tags: ["portfolio"] }
+);
+
+export const getPortfolioItems = cache(async () => getCachedPortfolioItems());
 
 export async function getItemsByCategory(
   category: Category

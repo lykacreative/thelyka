@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { BodyLock } from '@/components/BodyLock';
 import { Lightbox } from '@/components/Lightbox';
@@ -21,7 +20,11 @@ type ReviewGalleryGridProps = {
 };
 
 export function ReviewGalleryGrid({ items, reviewType }: ReviewGalleryGridProps) {
-  const router = useRouter();
+  const [selectedReviewType, setSelectedReviewType] = useState<ReviewType | null>(
+    reviewType ?? null,
+  );
+  const [selectedYear, setSelectedYear] = useState<string | null>(null);
+  const [activeItem, setActiveItem] = useState<PortfolioItem | null>(null);
 
   const years = useMemo(
     () =>
@@ -31,8 +34,22 @@ export function ReviewGalleryGrid({ items, reviewType }: ReviewGalleryGridProps)
     [items],
   );
 
-  const [selectedYear, setSelectedYear] = useState<string | null>(null);
-  const [activeItem, setActiveItem] = useState<PortfolioItem | null>(null);
+  useEffect(() => {
+    setSelectedReviewType(reviewType ?? null);
+  }, [reviewType]);
+
+  useEffect(() => {
+    function onPopState() {
+      const slug = window.location.pathname.split("/").pop();
+      const match = reviewTypes.find((type) =>
+        reviewPathForType(type).endsWith(`/${slug}`),
+      );
+      setSelectedReviewType(match ?? null);
+    }
+
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
 
   useEffect(() => {
     if (selectedYear === null && years.length > 0) {
@@ -41,27 +58,34 @@ export function ReviewGalleryGrid({ items, reviewType }: ReviewGalleryGridProps)
   }, [selectedYear, years]);
 
   const typeItems = useMemo(
-    () => (reviewType ? items.filter((item) => item.reviewType === reviewType) : items),
-    [items, reviewType],
+    () =>
+      selectedReviewType
+        ? items.filter((item) => item.reviewType === selectedReviewType)
+        : items,
+    [items, selectedReviewType],
   );
 
   const filtered = useMemo(() => {
     return items.filter((item) => {
-      const typeMatch = reviewType ? item.reviewType === reviewType : true;
+      const typeMatch = selectedReviewType
+        ? item.reviewType === selectedReviewType
+        : true;
       const yearMatch =
         selectedYear === null
           ? true
           : item.year === selectedYear;
       return typeMatch && yearMatch;
     });
-  }, [items, reviewType, selectedYear]);
+  }, [items, selectedReviewType, selectedYear]);
 
   const handleTypeClick = (type: ReviewType) => {
-    router.push(reviewPathForType(type));
+    setSelectedReviewType(type);
+    window.history.replaceState(null, "", reviewPathForType(type));
   };
 
   const goToAll = () => {
-    router.push('/reviews');
+    setSelectedReviewType(null);
+    window.history.replaceState(null, "", "/reviews/movies");
   };
 
   const currentYearIndex = selectedYear ? years.indexOf(selectedYear) : -1;
@@ -106,7 +130,7 @@ export function ReviewGalleryGrid({ items, reviewType }: ReviewGalleryGridProps)
               className={`
                 px-3 py-1.5 text-xs font-medium transition sm:px-5 sm:py-2 sm:text-sm
                 ${
-                  !reviewType
+                  !selectedReviewType
                     ? 'border border-[var(--frame)] bg-[var(--panel-bg)] text-[var(--panel-fg)]'
                     : 'border border-[var(--frame)] bg-transparent text-[var(--page-fg)] hover:bg-[var(--panel-bg)]/10'
                 }
@@ -115,7 +139,7 @@ export function ReviewGalleryGrid({ items, reviewType }: ReviewGalleryGridProps)
               All
             </button>
             {reviewTypes.map((type) => {
-              const isActive = reviewType === type;
+              const isActive = selectedReviewType === type;
 
               return (
                 <button
@@ -172,8 +196,8 @@ export function ReviewGalleryGrid({ items, reviewType }: ReviewGalleryGridProps)
         {filtered.length === 0 ? (
           <div className="py-24 text-center">
             <p className="font-display text-2xl font-normal tracking-normal text-[var(--page-fg)] sm:text-3xl">
-              {typeItems.length === 0 && reviewType
-                ? `No ${reviewType} reviews uploaded yet.`
+              {typeItems.length === 0 && selectedReviewType
+                ? `No ${selectedReviewType} reviews uploaded yet.`
                 : 'No reviews found for this filter.'}
             </p>
           </div>
