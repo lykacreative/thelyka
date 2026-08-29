@@ -13,6 +13,7 @@
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "autoprefixer": "^10.4.19",
+    "cloudinary": "^2.11.0",
     "framer-motion": "^11.2.10",
     "motion-dom": "^12.38.0",
     "motion-utils": "^12.36.0",

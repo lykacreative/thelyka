@@ -1,8 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
+import {
+  isCloudinaryConfigured,
+  uploadBlogImage,
+} from "@/lib/cloudinary";
+import { isAdminAuthenticated } from "@/lib/admin-auth";
+
+export const runtime = "nodejs";
+
+function useCloudinary() {
+  return (
+    process.env.NODE_ENV === "production" &&
+    isCloudinaryConfigured()
+  );
+}
 
 export async function POST(req: NextRequest) {
+  if (!(await isAdminAuthenticated())) {
+    return NextResponse.json(
+      { error: "Not authenticated." },
+      { status: 401 }
+    );
+  }
+
   try {
     const formData = await req.formData();
 
@@ -11,31 +32,28 @@ export async function POST(req: NextRequest) {
 
     if (!file) {
       return NextResponse.json(
-        { error: "No file provided" },
+        { error: "No file provided." },
         { status: 400 }
       );
     }
 
-    if (!year) {
+    if (!year || !/^\d{4}$/.test(year)) {
       return NextResponse.json(
-        { error: "Year is required." },
+        { error: "A valid year is required." },
         { status: 400 }
       );
     }
 
-    // Only allow images
     if (!file.type.startsWith("image/")) {
       return NextResponse.json(
-        { error: "Only image files are allowed" },
+        { error: "Only image files are allowed." },
         { status: 400 }
       );
     }
 
-    // Convert uploaded file to buffer
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Clean filename
     const originalName = file.name.replace(
       /[^a-zA-Z0-9._-]/g,
       "-"
@@ -44,8 +62,31 @@ export async function POST(req: NextRequest) {
     const filename =
       originalName || `image-${Date.now()}.jpg`;
 
-    // Target:
-    // public/media/<year>/
+    /*
+     * Production:
+     * Upload blog image to Cloudinary.
+     */
+    if (useCloudinary()) {
+      const result = await uploadBlogImage(
+        buffer,
+        year,
+        filename
+      );
+
+      return NextResponse.json({
+        success: true,
+        filename,
+        year,
+        src: result.secureUrl,
+        publicId: result.publicId,
+        storage: "cloudinary",
+      });
+    }
+
+    /*
+     * Local development:
+     * Continue storing images in public/media.
+     */
     const uploadDir = path.join(
       process.cwd(),
       "public",
@@ -53,16 +94,17 @@ export async function POST(req: NextRequest) {
       year
     );
 
-    // Automatically creates the year folder if it doesn't exist
-    await mkdir(uploadDir, { recursive: true });
+    await mkdir(uploadDir, {
+      recursive: true,
+    });
 
-    // Full filesystem path
-    const filePath = path.join(uploadDir, filename);
+    const filePath = path.join(
+      uploadDir,
+      filename
+    );
 
-    // Save image
     await writeFile(filePath, buffer);
 
-    // Public URL
     const publicUrl = `/media/${year}/${filename}`;
 
     return NextResponse.json({
@@ -70,12 +112,13 @@ export async function POST(req: NextRequest) {
       filename,
       year,
       src: publicUrl,
+      storage: "local",
     });
   } catch (error) {
-    console.error("Upload error:", error);
+    console.error("Blog image upload error:", error);
 
     return NextResponse.json(
-      { error: "Failed to upload image" },
+      { error: "Failed to upload image." },
       { status: 500 }
     );
   }

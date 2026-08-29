@@ -3,7 +3,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, type FormEvent, type ChangeEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type ChangeEvent,
+} from "react";
 import { FaPenToSquare, FaTrashCan, FaXmark, FaUpload } from "react-icons/fa6";
 import { categoryLabels } from "@/lib/copy";
 import { artTypes, defaultArtType, type ArtType } from "@/lib/art-types";
@@ -42,20 +49,44 @@ const emptyDraft = {
   reviewType: defaultReviewType as ReviewType,
 };
 
-export function PortfolioManager({ categories, existingYears, existingItems }: PortfolioManagerProps) {
+export function PortfolioManager({
+  categories,
+  existingYears,
+  existingItems,
+}: PortfolioManagerProps) {
   const router = useRouter();
+
+  // Local copy of items so we can update the UI instantly
+  const [items, setItems] = useState(existingItems);
+
+  // Only sync from server when the number of items changes (upload / delete).
+  // This prevents a stale server refresh from overwriting a note we just saved.
+  const prevCountRef = useRef(existingItems.length);
+
+  useEffect(() => {
+    if (existingItems.length !== prevCountRef.current) {
+      setItems(existingItems);
+      prevCountRef.current = existingItems.length;
+    }
+  }, [existingItems]);
+
   const sortedItems = useMemo(
     () =>
-      [...existingItems].sort(
-        (a, b) => b.year.localeCompare(a.year) || (b.date ?? "").localeCompare(a.date ?? "")
+      [...items].sort(
+        (a, b) =>
+          b.year.localeCompare(a.year) ||
+          (b.date ?? "").localeCompare(a.date ?? "")
       ),
-    [existingItems]
+    [items]
   );
 
   const [editingSrc, setEditingSrc] = useState<string | null>(null);
   const [draft, setDraft] = useState({ ...emptyDraft });
   const [status, setStatus] = useState<Status>({ kind: "idle" });
-  const [confirmDelete, setConfirmDelete] = useState<{ src: string; title: string } | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{
+    src: string;
+    title: string;
+  } | null>(null);
   const [deleteFile, setDeleteFile] = useState(true);
 
   // Upload state
@@ -83,7 +114,7 @@ export function PortfolioManager({ categories, existingYears, existingItems }: P
     setDraft({
       title: item.title,
       date: item.date ?? "",
-      note: item.note,
+      note: item.note ?? "",
       category: item.category,
       year: item.year,
       artType: item.artType ?? defaultArtType,
@@ -128,9 +159,10 @@ export function PortfolioManager({ categories, existingYears, existingItems }: P
     setUploadFile(file);
     setUploadPreview(file ? URL.createObjectURL(file) : null);
 
-    // Auto-fill title from filename if empty
     if (file && !uploadDraft.title) {
-      const name = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
+      const name = file.name
+        .replace(/\.[^/.]+$/, "")
+        .replace(/[-_]/g, " ");
       setUploadDraft((d) => ({ ...d, title: name }));
     }
   }
@@ -166,11 +198,17 @@ export function PortfolioManager({ categories, existingYears, existingItems }: P
     try {
       const response = await fetch("/api/portfolio/upload", {
         method: "POST",
-        body: formData
+        body: formData,
       });
-      const payload = (await response.json().catch(() => ({}))) as { error?: string; src?: string };
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        src?: string;
+      };
       if (!response.ok) {
-        setStatus({ kind: "error", message: payload.error ?? "Upload failed." });
+        setStatus({
+          kind: "error",
+          message: payload.error ?? "Upload failed.",
+        });
         return;
       }
       setStatus({ kind: "success", message: "Artwork uploaded successfully." });
@@ -179,7 +217,7 @@ export function PortfolioManager({ categories, existingYears, existingItems }: P
     } catch (error) {
       setStatus({
         kind: "error",
-        message: error instanceof Error ? error.message : "Upload failed."
+        message: error instanceof Error ? error.message : "Upload failed.",
       });
     }
   }
@@ -205,19 +243,46 @@ export function PortfolioManager({ categories, existingYears, existingItems }: P
           category: draft.category,
           year: draft.year,
           ...(draft.category === "arts" ? { artType: draft.artType } : {}),
-          ...(draft.category === "reviews" ? { reviewType: draft.reviewType } : {}),
-        })
+          ...(draft.category === "reviews"
+            ? { reviewType: draft.reviewType }
+            : {}),
+        }),
       });
-      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        entry?: PortfolioItem;
+      };
+
       if (!response.ok) {
-        setStatus({ kind: "error", message: payload.error ?? "Save failed." });
+        setStatus({
+          kind: "error",
+          message: payload.error ?? "Save failed.",
+        });
         return;
       }
+
+      // Instant UI update
+      if (payload.entry) {
+        setItems((prev) =>
+          prev.map((item) =>
+            item.src === payload.entry!.src
+              ? { ...item, ...payload.entry }
+              : item
+          )
+        );
+      }
+
       setStatus({ kind: "success", message: "Saved." });
       cancelEdit();
-      router.refresh();
+
+      // Slight delay so Cloudinary has time to update before a refresh
+      setTimeout(() => router.refresh(), 1000);
     } catch (error) {
-      setStatus({ kind: "error", message: error instanceof Error ? error.message : "Save failed." });
+      setStatus({
+        kind: "error",
+        message: error instanceof Error ? error.message : "Save failed.",
+      });
     }
   }
 
@@ -228,19 +293,40 @@ export function PortfolioManager({ categories, existingYears, existingItems }: P
       const response = await fetch("/api/portfolio", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ src: confirmDelete.src, deleteFile })
+        body: JSON.stringify({
+          src: confirmDelete.src,
+          deleteFile,
+        }),
       });
-      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+      };
       if (!response.ok) {
-        setStatus({ kind: "error", message: payload.error ?? "Delete failed." });
+        setStatus({
+          kind: "error",
+          message: payload.error ?? "Delete failed.",
+        });
         return;
       }
-      setStatus({ kind: "success", message: `Removed “${confirmDelete.title}”.` });
+
+      // Instant UI update – remove the item
+      setItems((prev) =>
+        prev.filter((item) => item.src !== confirmDelete.src)
+      );
+      prevCountRef.current = prevCountRef.current - 1;
+
+      setStatus({
+        kind: "success",
+        message: `Removed “${confirmDelete.title}”.`,
+      });
       setConfirmDelete(null);
       if (editingSrc === confirmDelete.src) cancelEdit();
       router.refresh();
     } catch (error) {
-      setStatus({ kind: "error", message: error instanceof Error ? error.message : "Delete failed." });
+      setStatus({
+        kind: "error",
+        message: error instanceof Error ? error.message : "Delete failed.",
+      });
     }
   }
 
@@ -258,7 +344,6 @@ export function PortfolioManager({ categories, existingYears, existingItems }: P
           its details.
         </p>
         <div className="flex items-center gap-3">
-          {/* NEW UPLOAD BUTTON */}
           <button
             type="button"
             onClick={openUpload}
@@ -300,7 +385,7 @@ export function PortfolioManager({ categories, existingYears, existingItems }: P
           onClick={closeUpload}
         >
           <div
-            className="w-full max-w-lg border border-[var(--frame)] bg-[var(--modal-bg)] p-6 text-[var(--modal-fg)] shadow-[0_30px_90px_var(--shadow)]"
+            className="w-full max-w-lg border border-[var(--frame)] bg-[var(--modal-bg)] p-6 text-[var(--modal-fg)] shadow-[0_30px_90px_var(--shadow)] max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-5 flex items-center justify-between">
@@ -519,149 +604,151 @@ export function PortfolioManager({ categories, existingYears, existingItems }: P
               </div>
 
               {isEditing ? (
-                <form onSubmit={handleSave} className="mt-3 space-y-3 border-t border-[var(--frame)] pt-3">
-                  <label className="block">
-                    <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">
-                      Title
-                    </span>
-                    <input
-                      type="text"
-                      value={draft.title}
-                      onChange={(event) => setDraft({ ...draft, title: event.target.value })}
-                      className="w-full border border-[var(--frame)] bg-[var(--page-bg-solid)] px-2 py-1 font-display text-sm tracking-normal text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
-                      required
-                    />
-                  </label>
-
-                  <div className="grid grid-cols-2 gap-2">
+                <form onSubmit={handleSave} className="max-h-96 overflow-y-auto border-t border-[var(--frame)] pt-3">
+                  <div className="space-y-3">
                     <label className="block">
                       <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">
-                        Category
+                        Title
                       </span>
-                      <select
-                        value={draft.category}
-                        onChange={(event) => {
-                          const next = event.target.value as Category;
-                          setDraft({
-                            ...draft,
-                            category: next,
-                            ...(next === "arts" ? { artType: defaultArtType } : { artType: defaultArtType }),
-                            ...(next === "reviews" ? { reviewType: defaultReviewType } : { reviewType: defaultReviewType }),
-                          });
-                        }}
+                      <input
+                        type="text"
+                        value={draft.title}
+                        onChange={(event) => setDraft({ ...draft, title: event.target.value })}
                         className="w-full border border-[var(--frame)] bg-[var(--page-bg-solid)] px-2 py-1 font-display text-sm tracking-normal text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
-                      >
-                        {categories.map((value) => (
-                          <option key={value} value={value}>
-                            {categoryLabels[value]}
-                          </option>
-                        ))}
-                      </select>
+                        required
+                      />
                     </label>
-                    <label className="block">
-                      <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">
-                        Year
-                      </span>
-                      <select
-                        value={draft.year}
-                        onChange={(event) => setDraft({ ...draft, year: event.target.value })}
-                        className="w-full border border-[var(--frame)] bg-[var(--page-bg-solid)] px-2 py-1 font-display text-sm tracking-normal text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
-                      >
-                        {yearOptions.map((value) => (
-                          <option key={value} value={value}>
-                            {value}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
 
-                   {draft.category === "arts" ? (
-                     <label className="block">
-                       <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">
-                         Art type
-                       </span>
-                       <select
-                         value={draft.artType}
-                         onChange={(event) =>
-                           setDraft({ ...draft, artType: event.target.value as ArtType })
-                         }
-                         className="w-full border border-[var(--frame)] bg-[var(--page-bg-solid)] px-2 py-1 font-display text-sm tracking-normal text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
-                       >
-                         {artTypes.map((value) => (
-                           <option key={value} value={value}>
-                             {value}
-                           </option>
-                         ))}
-                       </select>
-                     </label>
-                   ) : null}
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className="block">
+                        <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">
+                          Category
+                        </span>
+                        <select
+                          value={draft.category}
+                          onChange={(event) => {
+                            const next = event.target.value as Category;
+                            setDraft({
+                              ...draft,
+                              category: next,
+                              ...(next === "arts" ? { artType: defaultArtType } : { artType: defaultArtType }),
+                              ...(next === "reviews" ? { reviewType: defaultReviewType } : { reviewType: defaultReviewType }),
+                            });
+                          }}
+                          className="w-full border border-[var(--frame)] bg-[var(--page-bg-solid)] px-2 py-1 font-display text-sm tracking-normal text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
+                        >
+                          {categories.map((value) => (
+                            <option key={value} value={value}>
+                              {categoryLabels[value]}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="block">
+                        <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">
+                          Year
+                        </span>
+                        <select
+                          value={draft.year}
+                          onChange={(event) => setDraft({ ...draft, year: event.target.value })}
+                          className="w-full border border-[var(--frame)] bg-[var(--page-bg-solid)] px-2 py-1 font-display text-sm tracking-normal text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
+                        >
+                          {yearOptions.map((value) => (
+                            <option key={value} value={value}>
+                              {value}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
 
-                   {draft.category === "reviews" ? (
-                     <label className="block">
-                       <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">
-                         Review type
-                       </span>
-                       <select
-                         value={draft.reviewType}
-                         onChange={(event) =>
-                           setDraft({ ...draft, reviewType: event.target.value as ReviewType })
-                         }
-                         className="w-full border border-[var(--frame)] bg-[var(--page-bg-solid)] px-2 py-1 font-display text-sm tracking-normal text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
-                       >
-                         {reviewTypes.map((value) => (
-                           <option key={value} value={value}>
-                             {value}
-                           </option>
-                         ))}
-                       </select>
-                     </label>
-                   ) : null}
-
-                  <label className="block">
-                    <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">
-                      Date
-                    </span>
-                    <input
-                      type="date"
-                      value={draft.date}
-                      onChange={(event) => setDraft({ ...draft, date: event.target.value })}
-                      className="w-full border border-[var(--frame)] bg-[var(--page-bg-solid)] px-2 py-1 font-display text-sm tracking-normal text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
-                    />
-                  </label>
-
-                  <label className="block">
-                    <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">
-                      Artist note
-                    </span>
-                    <textarea
-                      value={draft.note}
-                      onChange={(event) => setDraft({ ...draft, note: event.target.value })}
-                      rows={3}
-                      className="w-full resize-none border border-[var(--frame)] bg-[var(--page-bg-solid)] px-2 py-1 font-display text-sm tracking-normal text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
-                    />
-                  </label>
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="submit"
-                      disabled={status.kind === "saving"}
-                      className="border border-[var(--frame)] bg-[var(--panel-bg)] px-3 py-1 font-sans text-[11px] font-medium uppercase tracking-normal text-[var(--panel-fg)] transition hover:opacity-90 disabled:opacity-60"
-                    >
-                      {status.kind === "saving" ? "Saving…" : "Save"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={cancelEdit}
-                      className="border border-[var(--frame)] bg-transparent px-3 py-1 font-sans text-[11px] font-medium uppercase tracking-normal text-[var(--modal-fg)] transition hover:bg-[var(--panel-bg)] hover:text-[var(--panel-fg)]"
-                    >
-                      Cancel
-                    </button>
-                    {status.kind === "error" ? (
-                      <span className="font-sans text-[11px] tracking-normal text-rose-700 dark:text-rose-300">
-                        {status.message}
-                      </span>
+                    {draft.category === "arts" ? (
+                      <label className="block">
+                        <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">
+                          Art type
+                        </span>
+                        <select
+                          value={draft.artType}
+                          onChange={(event) =>
+                            setDraft({ ...draft, artType: event.target.value as ArtType })
+                          }
+                          className="w-full border border-[var(--frame)] bg-[var(--page-bg-solid)] px-2 py-1 font-display text-sm tracking-normal text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
+                        >
+                          {artTypes.map((value) => (
+                            <option key={value} value={value}>
+                              {value}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
                     ) : null}
+
+                    {draft.category === "reviews" ? (
+                      <label className="block">
+                        <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">
+                          Review type
+                        </span>
+                        <select
+                          value={draft.reviewType}
+                          onChange={(event) =>
+                            setDraft({ ...draft, reviewType: event.target.value as ReviewType })
+                          }
+                          className="w-full border border-[var(--frame)] bg-[var(--page-bg-solid)] px-2 py-1 font-display text-sm tracking-normal text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
+                        >
+                          {reviewTypes.map((value) => (
+                            <option key={value} value={value}>
+                              {value}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ) : null}
+
+                    <label className="block">
+                      <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">
+                        Date
+                      </span>
+                      <input
+                        type="date"
+                        value={draft.date}
+                        onChange={(event) => setDraft({ ...draft, date: event.target.value })}
+                        className="w-full border border-[var(--frame)] bg-[var(--page-bg-solid)] px-2 py-1 font-display text-sm tracking-normal text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
+                      />
+                    </label>
+
+                    <label className="block">
+                      <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">
+                        Artist note
+                      </span>
+                      <textarea
+                        value={draft.note}
+                        onChange={(event) => setDraft({ ...draft, note: event.target.value })}
+                        rows={3}
+                        className="w-full resize-none border border-[var(--frame)] bg-[var(--page-bg-solid)] px-2 py-1 font-display text-sm tracking-normal text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
+                      />
+                    </label>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="submit"
+                        disabled={status.kind === "saving"}
+                        className="border border-[var(--frame)] bg-[var(--panel-bg)] px-3 py-1 font-sans text-[11px] font-medium uppercase tracking-normal text-[var(--panel-fg)] transition hover:opacity-90 disabled:opacity-60"
+                      >
+                        {status.kind === "saving" ? "Saving…" : "Save"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={cancelEdit}
+                        className="border border-[var(--frame)] bg-transparent px-3 py-1 font-sans text-[11px] font-medium uppercase tracking-normal text-[var(--modal-fg)] transition hover:bg-[var(--panel-bg)] hover:text-[var(--panel-fg)]"
+                      >
+                        Cancel
+                      </button>
+                      {status.kind === "error" ? (
+                        <span className="font-sans text-[11px] tracking-normal text-rose-700 dark:text-rose-300">
+                          {status.message}
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
                 </form>
               ) : null}
@@ -676,7 +763,7 @@ export function PortfolioManager({ categories, existingYears, existingItems }: P
         ) : null}
       </ul>
 
-      {/* Delete confirmation modal (unchanged) */}
+      {/* Delete confirmation modal */}
       {confirmDelete ? (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--overlay)] p-4 backdrop-blur"

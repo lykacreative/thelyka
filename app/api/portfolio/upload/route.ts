@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { writeFile, mkdir, readFile } from "fs/promises";
+import { revalidateTag } from "next/cache";
 import path from "path";
-import { existsSync } from "fs";
+import { isAdminAuthenticated } from "@/lib/admin-auth";
 import {
   artSlugByType,
   defaultArtType,
@@ -12,8 +12,47 @@ import {
   isReviewType,
   reviewSlugByType,
 } from "@/lib/review-types";
+import {
+  isCloudinaryConfigured,
+  portfolioUsesCloudinary,
+  uploadPortfolioImage,
+} from "@/lib/cloudinary";
+import {
+  readPortfolioMetadata,
+  writePortfolioMetadata,
+  type PortfolioMetadataEntry,
+} from "@/lib/portfolio-metadata";
+import { writeFile, mkdir } from "fs/promises";
+import { existsSync } from "fs";
+
+export const runtime = "nodejs";
+
+function usesCloudStorage() {
+  return (
+    portfolioUsesCloudinary() ||
+    (isCloudinaryConfigured() && process.env.PORTFOLIO_STORAGE === "cloudinary")
+  );
+}
 
 export async function POST(req: NextRequest) {
+  try {
+    if (!(await isAdminAuthenticated())) {
+      return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
+    }
+  } catch {
+    return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
+  }
+
+  if (!usesCloudStorage() && process.env.NODE_ENV === "production") {
+    return NextResponse.json(
+      {
+        error:
+          "Cloudinary is not configured for production uploads. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET on Vercel.",
+      },
+      { status: 500 }
+    );
+  }
+
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
@@ -42,67 +81,70 @@ export async function POST(req: NextRequest) {
 
     const isArts = category === "arts";
     const isReviews = category === "reviews";
-
-    // Arts and Reviews are stored like: public/portfolio/<category>/<type>/<year>/…
-    // Everything else stays as:  public/portfolio/<category>/<year>/…
     const artTypeFolder = isArts ? artSlugByType[artType] : "";
     const reviewTypeFolder = isReviews ? reviewSlugByType[reviewType] : "";
     const typeFolder = artTypeFolder || reviewTypeFolder;
 
-    const uploadDir = path.join(
-      process.cwd(),
-      "public",
-      "portfolio",
-      category,
-      ...(typeFolder ? [typeFolder, year] : [year])
-    );
-
-    // Automatically creates the year folder (and art-type folder) if it doesn't exist
-    await mkdir(uploadDir, { recursive: true });
-
-    // Safe filename
     const ext = path.extname(file.name) || ".jpg";
     const safeName =
       `${Date.now()}-` +
       file.name
         .replace(/\.[^/.]+$/, "")
         .replace(/[^a-zA-Z0-9-_]/g, "-")
-        .toLowerCase() +
-      ext;
+        .toLowerCase();
 
-    const filePath = path.join(uploadDir, safeName);
     const buffer = Buffer.from(await file.arrayBuffer());
-    await writeFile(filePath, buffer);
+    let src: string;
+    let cloudinaryPublicId: string | undefined;
+    let width: number | undefined;
+    let height: number | undefined;
 
-    const src = typeFolder
-      ? `/portfolio/${category}/${typeFolder}/${year}/${safeName}`
-      : `/portfolio/${category}/${year}/${safeName}`;
+    if (usesCloudStorage()) {
+      const folder = ["thelyka", "portfolio", category, ...(typeFolder ? [typeFolder, year] : [year])].join(
+        "/"
+      );
+      const uploaded = await uploadPortfolioImage(buffer, folder, safeName);
+      src = uploaded.secureUrl;
+      cloudinaryPublicId = uploaded.publicId;
+      width = uploaded.width;
+      height = uploaded.height;
+    } else {
+      const uploadDir = path.join(
+        process.cwd(),
+        "public",
+        "portfolio",
+        category,
+        ...(typeFolder ? [typeFolder, year] : [year])
+      );
 
-    // Also update metadata.json (optional but recommended)
-    const metadataPath = path.join(process.cwd(), "public", "portfolio", "metadata.json");
-    let metadata: any[] = [];
+      await mkdir(uploadDir, { recursive: true });
+      const filename = `${safeName}${ext}`;
+      await writeFile(path.join(uploadDir, filename), buffer);
 
-    if (existsSync(metadataPath)) {
-      try {
-        metadata = JSON.parse(await readFile(metadataPath, "utf8"));
-      } catch {
-        metadata = [];
-      }
+      src = typeFolder
+        ? `/portfolio/${category}/${typeFolder}/${year}/${filename}`
+        : `/portfolio/${category}/${year}/${filename}`;
     }
 
-    metadata = metadata.filter((item) => item.src !== src);
-    metadata.push({
+    const metadata = await readPortfolioMetadata();
+    const entry: PortfolioMetadataEntry = {
       src,
+      cloudinaryPublicId,
       category,
       year,
       title,
       note,
       date: date || undefined,
+      width,
+      height,
       ...(isArts ? { artType } : {}),
       ...(isReviews ? { reviewType } : {}),
-    });
+    };
 
-    await writeFile(metadataPath, JSON.stringify(metadata, null, 2));
+    const next = metadata.filter((item) => item.src !== src);
+    next.push(entry);
+    await writePortfolioMetadata(next);
+    revalidateTag("portfolio", "max");
 
     return NextResponse.json({
       success: true,

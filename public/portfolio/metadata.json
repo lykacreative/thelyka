@@ -89,14 +89,16 @@
     "category": "reviews",
     "year": "2024",
     "title": "dave sucks",
-    "note": "dave is 5\"2"
+    "note": "dave is 5\"2",
+    "reviewType": "Books"
   },
   {
     "src": "/portfolio/design/2028/photo_2026-06-17 00.53.32.jpeg",
     "category": "design",
     "year": "2028",
-    "title": "Test",
-    "note": "This flower represents beauty, growth, and the quiet strength found in nature. I wanted to capture the delicate balance between softness and resilience—the way a flower can appear fragile while continuing to grow toward the light.Sun: Full sun to light shade (afternoon shade in hot climates helps)\nSoil: Well-draining, slightly acidic to neutral, rich in organic matter\nPlanting: Bulbs in fall (or early spring in cold areas); plant 3× the bulb’s height deep\nWater: Consistent moisture, especially while growing; avoid waterlogged soil.This flower represents beauty, growth, and the quiet strength found in nature. I wanted to capture the delicate balance between softness and resilience—the way a flower can appear fragile while continuing to grow toward the light.Sun: Full sun to light shade (afternoon shade in hot climates helps)\nSoil: Well-draining, slightly acidic to neutral, rich in organic matter\nPlanting: Bulbs in fall (or early spring in cold areas); plant 3× the bulb’s height deep\nWater: Consistent moisture, especially while growing; avoid waterlogged soil"
+    "title": "Test1",
+    "note": "This flower represents beauty, growth, and the quiet strength found in nature. I wanted to capture the delicate balance between softness and resilience—the way a flower can appear fragile while continuing to grow toward the light.Sun: Full sun to light shade (afternoon shade in hot climates helps)\nSoil: Well-draining, slightly acidic to neutral, rich in organic matter\nPlanting: Bulbs in fall (or early spring in cold areas); plant 3× the bulb’s height deep\nWater: Consistent moisture, especially while growing; avoid waterlogged soil.This flower represents beauty, growth, and the quiet strength found in nature. I wanted to capture the delicate balance between softness and resilience—the way a flower can appear fragile while continuing to grow toward the light.Sun: Full sun to light shade (afternoon shade in hot climates helps)\nSoil: Well-draining, slightly acidic to neutral, rich in organic matter\nPlanting: Bulbs in fall (or early spring in cold areas); plant 3× the bulb’s height deep\nWater: Consistent moisture, especially while growing; avoid waterlogged soil",
+    "artType": "Sketches"
   },
   {
     "src": "/portfolio/design/2028/x.png",
@@ -130,10 +132,12 @@
     "reviewType": "Books"
   },
   {
-    "src": "/portfolio/design/2026/1787944467887-chatgpt-image-aug-28--2026--09_04_46-pm.png",
+    "src": "/portfolio/design/2027/BW.png",
     "category": "design",
-    "year": "2026",
-    "title": "ChatGPT Image Aug 28, 2026, 09 04 46 PM",
-    "note": "mm"
+    "year": "2027",
+    "title": "BW",
+    "note": "",
+    "artType": "Digital Art",
+    "reviewType": "Movies"
   }
 ]

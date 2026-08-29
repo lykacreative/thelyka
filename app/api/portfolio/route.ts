@@ -1,27 +1,23 @@
 import { NextResponse } from "next/server";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { revalidateTag } from "next/cache";
 import { isArtType } from "@/lib/art-types";
 import { isReviewType } from "@/lib/review-types";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
+import { deleteCloudinaryImage, isCloudinarySrc } from "@/lib/cloudinary";
 import { categories, type Category } from "@/lib/portfolio";
+import {
+  isRemotePortfolioSrc,
+  readPortfolioMetadata,
+  writePortfolioMetadata,
+  type PortfolioMetadataEntry,
+} from "@/lib/portfolio-metadata";
 
 export const runtime = "nodejs";
 
 const portfolioDir = path.join(process.cwd(), "public", "portfolio");
-const metadataPath = path.join(portfolioDir, "metadata.json");
 const imageExtensions = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif", ".svg"]);
-
-type MetadataEntry = {
-  src: string;
-  category?: string;
-  year?: string;
-  title?: string;
-  note?: string;
-  date?: string;
-  artType?: string;
-  reviewType?: string;
-};
 
 function isCategory(value: string): value is Category {
   return (categories as readonly string[]).includes(value);
@@ -34,22 +30,11 @@ function titleFromFilename(file: string) {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-async function readMetadata(): Promise<MetadataEntry[]> {
-  try {
-    const raw = await fs.readFile(metadataPath, "utf8");
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as MetadataEntry[]) : [];
-  } catch {
-    return [];
-  }
+function isValidPortfolioSrc(src: string) {
+  return src.startsWith("/portfolio/") || isRemotePortfolioSrc(src);
 }
 
-async function writeMetadata(items: MetadataEntry[]) {
-  await fs.mkdir(portfolioDir, { recursive: true });
-  await fs.writeFile(metadataPath, JSON.stringify(items, null, 2) + "\n", "utf8");
-}
-
-function parseSrc(src: string) {
+function parseLocalSrc(src: string) {
   if (!src.startsWith("/portfolio/")) return null;
   const relative = src.replace(/^\/portfolio\//, "");
   if (!relative || relative.includes("..")) return null;
@@ -60,7 +45,6 @@ function parseSrc(src: string) {
   const category = segments[0];
   if (!isCategory(category)) return null;
 
-  // Find the first 4-digit segment as year (supports nested layouts like arts/sketches/2024)
   const yearIndex = segments.findIndex((s) => /^\d{4}$/.test(s));
   if (yearIndex === -1) return null;
 
@@ -73,7 +57,7 @@ function parseSrc(src: string) {
 }
 
 function resolveFilePath(src: string) {
-  const parsed = parseSrc(src);
+  const parsed = parseLocalSrc(src);
   if (!parsed) return null;
   const absolute = path.join(portfolioDir, parsed.relative);
   const resolved = path.resolve(absolute);
@@ -106,7 +90,7 @@ export async function GET() {
   } catch {
     return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
   }
-  const metadata = await readMetadata();
+  const metadata = await readPortfolioMetadata();
   return NextResponse.json({ metadata });
 }
 
@@ -137,36 +121,43 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  if (!body.src || !body.src.startsWith("/portfolio/")) {
+  if (!body.src || !isValidPortfolioSrc(body.src)) {
     return NextResponse.json({ error: "Invalid src." }, { status: 400 });
   }
 
-  const parsed = parseSrc(body.src);
-  if (!parsed) {
-    return NextResponse.json(
-      { error: "src must look like /portfolio/<category>/<year>/<filename>." },
-      { status: 400 }
-    );
+  const parsed = parseLocalSrc(body.src);
+  const isRemote = isRemotePortfolioSrc(body.src);
+
+  if (!isRemote) {
+    if (!parsed) {
+      return NextResponse.json(
+        { error: "src must look like /portfolio/<category>/<year>/<filename>." },
+        { status: 400 }
+      );
+    }
+
+    const filepath = resolveFilePath(body.src);
+    if (!filepath || !(await fileExists(filepath))) {
+      return NextResponse.json(
+        { error: "No file exists at that path. Drop the image into public/portfolio first." },
+        { status: 404 }
+      );
+    }
   }
 
-  const filepath = resolveFilePath(body.src);
-  if (!filepath || !(await fileExists(filepath))) {
-    return NextResponse.json(
-      { error: "No file exists at that path. Drop the image into public/portfolio first." },
-      { status: 404 }
-    );
-  }
-
-  const metadata = await readMetadata();
+  const metadata = await readPortfolioMetadata();
   let index = metadata.findIndex((entry) => entry.src === body.src);
-  let current: MetadataEntry;
+  let current: PortfolioMetadataEntry;
 
   if (index === -1) {
+    if (!parsed) {
+      return NextResponse.json({ error: "Item not found." }, { status: 404 });
+    }
     current = {
       src: body.src,
       category: parsed.category,
       year: parsed.year,
-      title: titleFromFilename(parsed.filename)
+      title: titleFromFilename(parsed.filename),
     };
     metadata.push(current);
     index = metadata.length - 1;
@@ -174,7 +165,7 @@ export async function PATCH(request: Request) {
     current = metadata[index];
   }
 
-  const next: MetadataEntry = { ...current, src: body.src };
+  const next: PortfolioMetadataEntry = { ...current, src: body.src };
 
   if (typeof body.title === "string") next.title = sanitizeTitle(body.title);
   if (typeof body.note === "string") next.note = sanitizeNote(body.note);
@@ -205,7 +196,21 @@ export async function PATCH(request: Request) {
   }
 
   metadata[index] = next;
-  await writeMetadata(metadata);
+
+  console.log("PORTFOLIO PATCH: before write", {
+    body,
+    current,
+    next,
+    metadataCount: metadata.length,
+  });
+
+  await writePortfolioMetadata(metadata);
+
+  console.log("PORTFOLIO PATCH: metadata written");
+
+  revalidateTag("portfolio", "max");
+
+  console.log("PORTFOLIO PATCH: complete");
 
   return NextResponse.json({ ok: true, entry: next });
 }
@@ -231,30 +236,41 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  if (!body.src || !body.src.startsWith("/portfolio/")) {
+  if (!body.src || !isValidPortfolioSrc(body.src)) {
     return NextResponse.json({ error: "Invalid src." }, { status: 400 });
   }
 
-  const metadata = await readMetadata();
+  const metadata = await readPortfolioMetadata();
+  const existing = metadata.find((entry) => entry.src === body.src);
   const before = metadata.length;
   const next = metadata.filter((entry) => entry.src !== body.src);
   const hadMetadata = next.length < before;
 
   if (hadMetadata) {
-    await writeMetadata(next);
+    await writePortfolioMetadata(next);
+    revalidateTag("portfolio", "max");
   }
 
   let fileDeleted = false;
   if (body.deleteFile) {
-    const filepath = resolveFilePath(body.src);
-    if (filepath) {
-      const ext = path.extname(filepath).toLowerCase();
-      if (imageExtensions.has(ext)) {
-        try {
-          await fs.unlink(filepath);
-          fileDeleted = true;
-        } catch {
-          // File may already be gone; ignore.
+    if (existing?.cloudinaryPublicId && isCloudinarySrc(body.src)) {
+      try {
+        await deleteCloudinaryImage(existing.cloudinaryPublicId);
+        fileDeleted = true;
+      } catch {
+        // Image may already be gone; ignore.
+      }
+    } else {
+      const filepath = resolveFilePath(body.src);
+      if (filepath) {
+        const ext = path.extname(filepath).toLowerCase();
+        if (imageExtensions.has(ext)) {
+          try {
+            await fs.unlink(filepath);
+            fileDeleted = true;
+          } catch {
+            // File may already be gone; ignore.
+          }
         }
       }
     }

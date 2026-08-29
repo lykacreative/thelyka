@@ -512,8 +512,13 @@ Write your text here. **Markdown** is supported.
             </span>
 
             <select
-              value={uploadYear}
-              onChange={(e) => setUploadYear(e.target.value)}
+              value={form.year}
+              onChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  year: e.target.value,
+                }))
+              }
               className="w-full border border-[var(--frame)] bg-[var(--page-bg-solid)] px-2 py-1 font-display text-sm tracking-normal text-[var(--page-fg)]"
             >
               {yearOptions.map((y) => (

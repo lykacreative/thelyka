@@ -15,6 +15,11 @@ import {
   reviewTypeSlugs,
   type ReviewType,
 } from "@/lib/review-types";
+import {
+  isRemotePortfolioSrc,
+  readPortfolioMetadata,
+  type PortfolioMetadataEntry,
+} from "@/lib/portfolio-metadata";
 
 export const categories = ["design", "reviews", "arts"] as const;
 
@@ -40,16 +45,7 @@ export type PortfolioItem = {
   variantDimensions: Record<string, ImageDimensions>;
 };
 
-type MetadataItem = {
-  src: string;
-  category?: string;
-  year?: string;
-  title?: string;
-  note?: string;
-  date?: string;
-  artType?: string;
-  reviewType?: string;
-};
+type MetadataItem = PortfolioMetadataEntry;
 
 const publicDir = path.join(process.cwd(), "public");
 const portfolioDir = path.join(publicDir, "portfolio");
@@ -243,30 +239,38 @@ function resolveReviewType(meta: MetadataItem | undefined, category: Category): 
   return defaultReviewType;
 }
 
-function readMetadata() {
-  const metadataPath = path.join(portfolioDir, "metadata.json");
-
-  if (!fs.existsSync(metadataPath)) {
-    return new Map<string, MetadataItem>();
+function itemFromRemoteMetadata(meta: MetadataItem): PortfolioItem | null {
+  if (!meta.src || !meta.category || !isCategory(meta.category)) {
+    return null;
   }
 
-  try {
-    const parsed = JSON.parse(
-      fs.readFileSync(metadataPath, "utf8")
-    ) as MetadataItem[];
+  const category = meta.category;
+  const width = meta.width ?? 800;
+  const height = meta.height ?? 1000;
 
-    return new Map(
-      parsed
-        .filter((item) => item.src)
-        .map((item) => [item.src, item])
-    );
-  } catch {
-    return new Map<string, MetadataItem>();
-  }
+  return {
+    src: meta.src,
+    category,
+    year: meta.year ?? new Date().getFullYear().toString(),
+    title: meta.title ?? "Untitled",
+    note: meta.note ?? "",
+    date: meta.date,
+    artType: resolveArtType(meta, category),
+    reviewType: resolveReviewType(meta, category),
+    variants: [meta.src],
+    width,
+    height,
+    variantDimensions: {
+      [meta.src]: { width, height },
+    },
+  };
 }
 
 async function scanPortfolioItems(): Promise<PortfolioItem[]> {
-  const metadata = readMetadata();
+  const metadataEntries = await readPortfolioMetadata();
+  const metadata = new Map(
+    metadataEntries.filter((item) => item.src).map((item) => [item.src, item])
+  );
   const items: PortfolioItem[] = [];
 
   for (const category of categories) {
@@ -472,6 +476,18 @@ async function scanPortfolioItems(): Promise<PortfolioItem[]> {
           });
         }
       }
+    }
+  }
+
+  const seen = new Set(items.map((item) => item.src));
+  for (const entry of metadataEntries) {
+    if (!entry.src || !isRemotePortfolioSrc(entry.src) || seen.has(entry.src)) {
+      continue;
+    }
+    const remoteItem = itemFromRemoteMetadata(entry);
+    if (remoteItem) {
+      items.push(remoteItem);
+      seen.add(remoteItem.src);
     }
   }
 
