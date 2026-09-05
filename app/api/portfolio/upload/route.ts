@@ -144,7 +144,7 @@ export async function POST(req: NextRequest) {
     const next = metadata.filter((item) => item.src !== src);
     next.push(entry);
     await writePortfolioMetadata(next);
-    revalidateTag("portfolio", "max");
+    revalidateTag("portfolio", { expire: 0 });
 
     return NextResponse.json({
       success: true,

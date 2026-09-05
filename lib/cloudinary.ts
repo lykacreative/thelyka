@@ -1,3 +1,4 @@
+
 import { v2 as cloudinary } from "cloudinary";
 
 export const CLOUDINARY_METADATA_PUBLIC_ID =
@@ -42,44 +43,98 @@ export function isCloudinarySrc(src: string) {
 }
 
 export function portfolioUsesCloudinary() {
-  return (
-    isCloudinaryConfigured() &&
-    process.env.NODE_ENV === "production"
-  );
+  return isCloudinaryConfigured();
+}
+
+/* =========================================================
+   CLOUDINARY RAW READ HELPER
+   ========================================================= */
+
+ async function fetchCloudinaryRaw(
+  publicId: string
+): Promise<string | null> {
+  const client = ensureConfigured();
+
+  try {
+    // 1. Ask Admin API for the latest version (this hits origin, not CDN)
+    let version: number | undefined;
+    try {
+      const resource = await client.api.resource(publicId, {
+        resource_type: "raw",
+      });
+      version = resource.version;
+    } catch {
+      // Resource doesn't exist yet
+      return null;
+    }
+
+    // 2. Build a versioned URL so we always get the newest file
+    const url =
+      client.url(publicId, {
+        resource_type: "raw",
+        secure: true,
+        version,
+      }) + `?t=${Date.now()}`;
+
+    const response = await fetch(url, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(8000),
+    });
+
+    if (response.status === 404) {
+      return null;
+    }
+
+    if (!response.ok) {
+      throw new Error(
+        `Failed to read Cloudinary raw file (${response.status}).`
+      );
+    }
+
+    return await response.text();
+  } catch (error) {
+  if (
+    error instanceof Error &&
+    (error.name === "TimeoutError" || error.message.includes("fetch failed"))
+  ) {
+    console.warn(`[cloudinary] read timed out for "${publicId}"`);
+    return null; // ← do not throw
+  }
+  throw error;
+}
 }
 
 /* =========================================================
    PORTFOLIO METADATA
    ========================================================= */
 
-export async function readCloudinaryMetadataRaw(): Promise<string | null> {
-  const client = ensureConfigured();
-
-  const url = client.url(CLOUDINARY_METADATA_PUBLIC_ID, {
-    resource_type: "raw",
-    secure: true,
-  });
-
-  const response = await fetch(url, {
-    cache: "no-store",
-  });
-
-  if (response.status === 404) {
-    return null;
-  }
-
-  if (!response.ok) {
-    throw new Error(
-      `Failed to read Cloudinary metadata (${response.status}).`
-    );
-  }
-
-  return response.text();
+export async function readCloudinaryMetadataRaw(): Promise<
+  string | null
+> {
+  return fetchCloudinaryRaw(
+    CLOUDINARY_METADATA_PUBLIC_ID
+  );
 }
+
+  export async function getRawResourceVersion(
+    publicId: string
+  ): Promise<number | null> {
+    const client = ensureConfigured();
+
+    try {
+      const result = await client.api.resource(publicId, {
+        resource_type: "raw",
+      });
+      // version changes every time the file is overwritten
+      return typeof result.version === "number" ? result.version : null;
+    } catch {
+      return null;
+    }
+  }
 
 export async function writeCloudinaryMetadataRaw(
   json: string
-) {
+): Promise<void> {
   const client = ensureConfigured();
 
   await new Promise<void>((resolve, reject) => {
@@ -138,7 +193,8 @@ export async function uploadPortfolioImage(
       (error, uploadResult) => {
         if (error || !uploadResult) {
           reject(
-            error ?? new Error("Cloudinary upload failed.")
+            error ??
+              new Error("Cloudinary upload failed.")
           );
           return;
         }
@@ -160,7 +216,7 @@ export async function uploadPortfolioImage(
 
 export async function deleteCloudinaryImage(
   publicId: string
-) {
+): Promise<void> {
   const client = ensureConfigured();
 
   await client.uploader.destroy(publicId, {
@@ -203,7 +259,9 @@ export async function uploadBlogImage(
         if (error || !uploadResult) {
           reject(
             error ??
-              new Error("Cloudinary blog image upload failed.")
+              new Error(
+                "Cloudinary blog image upload failed."
+              )
           );
           return;
         }
@@ -265,33 +323,12 @@ export async function uploadCloudinaryRaw(
 export async function readCloudinaryRaw(
   publicId: string
 ): Promise<string | null> {
-  const client = ensureConfigured();
-
-  const url = client.url(publicId, {
-    resource_type: "raw",
-    secure: true,
-  });
-
-  const response = await fetch(url, {
-    cache: "no-store",
-  });
-
-  if (response.status === 404) {
-    return null;
-  }
-
-  if (!response.ok) {
-    throw new Error(
-      `Failed to read Cloudinary raw file (${response.status}).`
-    );
-  }
-
-  return response.text();
+  return fetchCloudinaryRaw(publicId);
 }
 
 export async function deleteCloudinaryRaw(
   publicId: string
-) {
+): Promise<void> {
   const client = ensureConfigured();
 
   await client.uploader.destroy(publicId, {

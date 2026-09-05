@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { getBlogPost, getBlogPosts } from "@/lib/blogs";
+import type { Metadata } from "next";
+import { getBlogPost } from "@/lib/blogs";
 import { BlogRenderer } from "@/components/BlogRenderer";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BodyLock } from "@/components/BodyLock";
@@ -12,65 +13,93 @@ type BlogPostPageProps = {
   }>;
 };
 
-export function generateStaticParams() {
-  return getBlogPosts().map((post) => ({ slug: post.slug }));
-}
+export const revalidate = 300;
 
-export async function generateMetadata({ params }: BlogPostPageProps) {
+export async function generateMetadata({
+  params,
+}: BlogPostPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const post = getBlogPost(slug);
-  if (!post) return { title: "not found" };
+
+  const post = await getBlogPost(slug);
+
+  if (!post) {
+    return {
+      title: "not found",
+    };
+  }
 
   const title = post.title;
-  const description = post.excerpt || "Blog post by Lyka Mimics";
+  const description =
+    post.excerpt || "Blog post by Lyka Mimics";
 
   return {
     title,
     description,
+
     openGraph: {
       title,
       description,
       type: "article",
-      ...(post.coverImage && {
-        images: [
-          {
-            url: post.coverImage,
-            width: 1200,
-            height: 630,
-            alt: post.title
+
+      ...(post.coverImage
+        ? {
+            images: [
+              {
+                url: post.coverImage,
+                width: 1200,
+                height: 630,
+                alt: post.title,
+              },
+            ],
           }
-        ]
-      })
+        : {}),
     },
+
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      ...(post.coverImage && {
-        images: [post.coverImage]
-      })
-    }
+
+      ...(post.coverImage
+        ? {
+            images: [post.coverImage],
+          }
+        : {}),
+    },
   };
 }
 
-export default async function BlogPostPage({ params }: BlogPostPageProps) {
+export default async function BlogPostPage({
+  params,
+}: BlogPostPageProps) {
   const { slug } = await params;
-  const post = getBlogPost(slug);
-  if (!post) notFound();
+
+  const post = await getBlogPost(slug);
+
+  if (!post) {
+    notFound();
+  }
 
   return (
     <main className="min-h-screen bg-[var(--page-bg)] text-[var(--page-fg)] transition-colors duration-300">
       <BodyLock locked={false} />
+
       <ThemeToggle />
+
       <article className="mx-auto w-full max-w-[720px] bg-[var(--page-bg)] px-5 pb-20 pt-20 sm:px-8">
         <nav className="mb-12 flex items-center justify-between">
           <Link
             href="/blogs"
             className="inline-flex items-center gap-2 border border-[var(--frame)] bg-transparent px-3 py-1 font-sans text-xs font-medium uppercase tracking-normal text-[var(--page-fg)] transition hover:bg-[var(--panel-bg)] hover:text-[var(--panel-fg)]"
           >
-            <span className="h-3.5 w-3.5 bg-[var(--page-fg)] [mask:url('/assets/figma-back.svg')_center/contain_no-repeat]" aria-hidden="true" />
+            <span
+              className="h-3.5 w-3.5 bg-[var(--page-fg)] [mask:url('/assets/figma-back.svg')_center/contain_no-repeat]"
+              aria-hidden="true"
+            />
+
             All posts
           </Link>
+
           <Link
             href="/"
             className="inline-flex items-center gap-2 border border-[var(--frame)] bg-transparent px-3 py-1 font-sans text-xs font-medium uppercase tracking-normal text-[var(--page-fg)] transition hover:bg-[var(--panel-bg)] hover:text-[var(--panel-fg)]"
@@ -83,9 +112,11 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           <time className="font-sans text-xs font-medium uppercase tracking-normal text-[var(--page-fg)]/70">
             {post.date}
           </time>
+
           <h1 className="mt-3 font-display text-[32px] font-normal leading-[1.1] tracking-normal sm:text-[48px]">
             {post.title}
           </h1>
+
           {post.excerpt ? (
             <p className="mt-4 max-w-xl font-sans text-base leading-relaxed text-[var(--page-fg)]/70">
               {post.excerpt}

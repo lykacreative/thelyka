@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import {
   useEffect,
   useMemo,
-  useRef,
   useState,
   type FormEvent,
   type ChangeEvent,
@@ -59,15 +58,8 @@ export function PortfolioManager({
   // Local copy of items so we can update the UI instantly
   const [items, setItems] = useState(existingItems);
 
-  // Only sync from server when the number of items changes (upload / delete).
-  // This prevents a stale server refresh from overwriting a note we just saved.
-  const prevCountRef = useRef(existingItems.length);
-
   useEffect(() => {
-    if (existingItems.length !== prevCountRef.current) {
-      setItems(existingItems);
-      prevCountRef.current = existingItems.length;
-    }
+    setItems(existingItems);
   }, [existingItems]);
 
   const sortedItems = useMemo(
@@ -313,7 +305,6 @@ export function PortfolioManager({
       setItems((prev) =>
         prev.filter((item) => item.src !== confirmDelete.src)
       );
-      prevCountRef.current = prevCountRef.current - 1;
 
       setStatus({
         kind: "success",

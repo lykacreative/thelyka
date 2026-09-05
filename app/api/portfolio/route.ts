@@ -208,7 +208,7 @@ export async function PATCH(request: Request) {
 
   console.log("PORTFOLIO PATCH: metadata written");
 
-  revalidateTag("portfolio", "max");
+  revalidateTag("portfolio", { expire: 0 });
 
   console.log("PORTFOLIO PATCH: complete");
 
@@ -248,7 +248,6 @@ export async function DELETE(request: Request) {
 
   if (hadMetadata) {
     await writePortfolioMetadata(next);
-    revalidateTag("portfolio", "max");
   }
 
   let fileDeleted = false;
@@ -282,6 +281,8 @@ export async function DELETE(request: Request) {
       { status: 404 }
     );
   }
+
+  revalidateTag("portfolio", { expire: 0 });
 
   return NextResponse.json({ ok: true, fileDeleted, metadataRemoved: hadMetadata });
 }

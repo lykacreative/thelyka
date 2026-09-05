@@ -68,7 +68,7 @@ function todayYear() {
 function resolveCoverField(
   value: string,
   year: string,
-  allImages: { src: string; year: string; filename: string }[]
+  localImages: { src: string; year: string; filename: string }[]
 ): string {
   if (!value) return "";
   if (value.startsWith("/media/")) return value;
@@ -77,7 +77,7 @@ function resolveCoverField(
   if (!trimmed) return "";
 
   // Find the image by filename across all media
-  const found = allImages.find((img) => img.filename === trimmed);
+  const found = localImages.find((img) => img.filename === trimmed);
   if (found) {
     return found.src;
   }
@@ -100,6 +100,14 @@ export function BlogEditor({ allImages, years }: BlogEditorProps) {
   const [paneOpen, setPaneOpen] = useState(false);
   const contentRef = useRef<HTMLTextAreaElement | null>(null);
 
+  // Keep a local copy of images so newly uploaded ones appear instantly
+  const [localImages, setLocalImages] = useState(allImages);
+
+  // Sync with server-provided images when they change
+  useEffect(() => {
+    setLocalImages(allImages);
+  }, [allImages]);
+
   // Upload state
   const [showUpload, setShowUpload] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
@@ -113,7 +121,7 @@ export function BlogEditor({ allImages, years }: BlogEditorProps) {
   })();
 
   const filteredImages =
-    imageFilter === "all" ? allImages : allImages.filter((img) => img.year === imageFilter);
+    imageFilter === "all" ? localImages : localImages.filter((img) => img.year === imageFilter);
 
   async function fetchPosts() {
     setLoadingPosts(true);
@@ -245,6 +253,22 @@ export function BlogEditor({ allImages, years }: BlogEditorProps) {
         message: `Image uploaded: ${payload.filename ?? "done"}`,
       });
 
+      // Optimistically add the new image to the local list
+      if (payload.src && payload.filename) {
+        const newImage = {
+          src: payload.src,
+          year: payload.year || form.year || todayYear(),
+          filename: payload.filename,
+        };
+        setLocalImages((prev) => {
+          const exists = prev.some(
+            (img) => img.src === newImage.src || img.filename === newImage.filename
+          );
+          if (exists) return prev;
+          return [...prev, newImage];
+        });
+      }
+
       // Populate the post form with the uploaded image so the cover
       // (or content) actually points at the file that was just saved.
       if (payload.filename) {
@@ -321,7 +345,7 @@ Write your text here. **Markdown** is supported.
     setStatus({ kind: "saving" });
     try {
       const rawCover = form.cover.trim();
-      const resolvedCover = resolveCoverField(rawCover, form.year || todayYear(), allImages);
+      const resolvedCover = resolveCoverField(rawCover, form.year || todayYear(), localImages);
 
       const response = await fetch("/api/blogs", {
         method: "POST",
@@ -373,6 +397,7 @@ Write your text here. **Markdown** is supported.
       setForm({ ...emptyForm });
       setEditingSlug(null);
       fetchPosts();
+      router.refresh();
     } catch (error) {
       setStatus({ kind: "error", message: error instanceof Error ? error.message : "Delete failed." });
     }
@@ -691,7 +716,7 @@ Write your text here. **Markdown** is supported.
                     <div className="relative mb-6 aspect-[16/9] w-full overflow-hidden border border-[var(--frame)] bg-[var(--panel-bg)]">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={resolveCoverField(form.cover, form.year || todayYear(), allImages)}
+                        src={resolveCoverField(form.cover, form.year || todayYear(), localImages)}
                         alt={form.title}
                         className="h-full w-full object-cover"
                       />
@@ -913,7 +938,7 @@ Write your text here. **Markdown** is supported.
         title={form.title}
         date={form.date}
         excerpt={form.excerpt}
-        cover={resolveCoverField(form.cover, form.year || todayYear(), allImages)}
+        cover={resolveCoverField(form.cover, form.year || todayYear(), localImages)}
         year={form.year || todayYear()}
         slug={form.slug}
         content={form.content}

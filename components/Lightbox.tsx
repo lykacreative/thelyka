@@ -81,7 +81,7 @@ export function Lightbox({ item, onClose }: LightboxProps) {
           >
             {/* IMAGE + CLOSE BUTTON */}
             {currentDimensions && (
-              <div onContextMenu={(event) => event.preventDefault()} className="relative w-full shrink-0 md:w-auto">
+              <div onContextMenu={(event) => event.preventDefault()} className="group relative w-full shrink-0 md:w-auto">
                 {/* CLOSE BUTTON – top-left corner of the image */}
                 <button
                   type="button"
@@ -92,10 +92,11 @@ export function Lightbox({ item, onClose }: LightboxProps) {
                     grid h-8 w-8 place-items-center
                     rounded-full border border-[var(--modal-fg)]
                     bg-[var(--modal-bg)] text-[var(--modal-fg)]
-                    shadow-md transition
+                    shadow-md transition-all duration-200
                     hover:bg-[var(--modal-fg)] hover:text-[var(--modal-bg)]
                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]
                     md:left-4 md:top-4
+                    opacity-0 group-hover:opacity-100
                   "
                 >
                   <FaXmark className="h-5 w-5" />

@@ -18,8 +18,8 @@ export default async function AdminPage() {
   const knownYears = Array.from(
     new Set(items.map((item) => item.year).filter((year) => /^\d{4}$/.test(year)))
   ).sort((a, b) => b.localeCompare(a));
-  const blogImages = getAllBlogImages();
-  const blogYears = getBlogYears();
+  const blogImages = await getAllBlogImages();
+  const blogYears = await getBlogYears();
 
   return (
     <AdminPanel

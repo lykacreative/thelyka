@@ -85,4 +85,3 @@ export async function removeBlogMetadata(
 
   await writeBlogMetadata(filtered);
 }
-
