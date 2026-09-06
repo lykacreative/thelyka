@@ -14,9 +14,12 @@ type LightboxProps = {
 
 export function Lightbox({ item, onClose }: LightboxProps) {
   const [variantIndex, setVariantIndex] = useState(0);
+  const [galleryIndex, setGalleryIndex] = useState(0);
 
+  // Reset both indices when a new artwork opens
   useEffect(() => {
     setVariantIndex(0);
+    setGalleryIndex(item?.coverIndex ?? 0);
   }, [item]);
 
   useEffect(() => {
@@ -35,13 +38,29 @@ export function Lightbox({ item, onClose }: LightboxProps) {
     };
   }, [item, onClose]);
 
+  // Existing variants logic (untouched)
   const currentSrc = item?.variants[variantIndex] ?? item?.src;
 
-  const currentDimensions = currentSrc
-    ? item?.variantDimensions[currentSrc] ?? {
-        width: item?.width ?? 1,
-        height: item?.height ?? 1,
-      }
+  // Gallery takes priority when present
+  const galleryImages = item?.gallery ?? [];
+
+  const activeGalleryImage =
+    galleryImages.length > 0
+      ? galleryImages[galleryIndex] ?? galleryImages[0]
+      : null;
+
+  const gallerySrc = activeGalleryImage?.src ?? currentSrc;
+
+  const currentDimensions = gallerySrc
+    ? item?.gallery?.length
+      ? {
+          width: activeGalleryImage?.width ?? item?.width ?? 1,
+          height: activeGalleryImage?.height ?? item?.height ?? 1,
+        }
+      : item?.variantDimensions[gallerySrc] ?? {
+          width: item?.width ?? 1,
+          height: item?.height ?? 1,
+        }
     : null;
 
   return (
@@ -79,9 +98,12 @@ export function Lightbox({ item, onClose }: LightboxProps) {
             transition={{ type: 'spring', stiffness: 260, damping: 28 }}
             onMouseDown={(e) => e.stopPropagation()}
           >
-            {/* IMAGE + CLOSE BUTTON */}
+            {/* IMAGE + CLOSE BUTTON + GALLERY THUMBNAILS */}
             {currentDimensions && (
-              <div onContextMenu={(event) => event.preventDefault()} className="group relative w-full shrink-0 md:w-auto">
+              <div
+                onContextMenu={(event) => event.preventDefault()}
+                className="group relative w-full shrink-0 md:w-auto"
+              >
                 {/* CLOSE BUTTON – top-left corner of the image */}
                 <button
                   type="button"
@@ -103,7 +125,7 @@ export function Lightbox({ item, onClose }: LightboxProps) {
                 </button>
 
                 <Image
-                  src={currentSrc!}
+                  src={gallerySrc!}
                   alt={`${item.title} by lyka mimics`}
                   width={currentDimensions.width}
                   height={currentDimensions.height}
@@ -114,6 +136,33 @@ export function Lightbox({ item, onClose }: LightboxProps) {
                   "
                   priority
                 />
+
+                {/* Gallery thumbnail strip */}
+                {item.gallery && item.gallery.length > 1 ? (
+                  <div className="absolute bottom-3 left-1/2 z-40 flex max-w-[90%] -translate-x-1/2 gap-2 overflow-x-auto rounded-md border border-[var(--frame)] bg-[var(--modal-bg)]/90 p-2 shadow-md backdrop-blur-sm">
+                    {item.gallery.map((image, index) => (
+                      <button
+                        key={`${image.src}-${index}`}
+                        type="button"
+                        onClick={() => setGalleryIndex(index)}
+                        aria-label={`View gallery image ${index + 1}`}
+                        className={`relative h-14 w-14 shrink-0 overflow-hidden border-2 transition ${
+                          galleryIndex === index
+                            ? 'border-[var(--modal-fg)]'
+                            : 'border-transparent opacity-70 hover:opacity-100'
+                        }`}
+                      >
+                        <Image
+                          src={image.src}
+                          alt={`${item.title} thumbnail ${index + 1}`}
+                          fill
+                          sizes="56px"
+                          className="object-cover"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             )}
 
@@ -127,7 +176,7 @@ export function Lightbox({ item, onClose }: LightboxProps) {
                 lg:border-l lg:border-[var(--frame)]
               "
             >
-                <div className="p-6 px-4">
+              <div className="p-6 px-4">
                 <p className="font-sans text-xs font-medium uppercase tracking-normal text-[var(--modal-fg)]">
                   {categoryLabels[item.category]}
                 </p>

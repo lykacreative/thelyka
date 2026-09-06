@@ -21,14 +21,26 @@ import {
   type PortfolioMetadataEntry,
 } from "@/lib/portfolio-metadata";
 
+
 export const categories = ["design", "reviews", "arts"] as const;
 
+
 export type Category = (typeof categories)[number];
+
 
 export type ImageDimensions = {
   width: number;
   height: number;
 };
+
+
+export type PortfolioGalleryImage = {
+  src: string;
+  cloudinaryPublicId?: string;
+  width?: number;
+  height?: number;
+};
+
 
 export type PortfolioItem = {
   src: string;
@@ -39,16 +51,25 @@ export type PortfolioItem = {
   date?: string;
   artType?: ArtType;
   reviewType?: ReviewType;
+
+  // Existing single-image variant system — leave untouched.
   variants: string[];
   width: number;
   height: number;
   variantDimensions: Record<string, ImageDimensions>;
+
+  // Gallery support.
+  gallery?: PortfolioGalleryImage[];
+  coverIndex?: number;
 };
+
 
 type MetadataItem = PortfolioMetadataEntry;
 
+
 const publicDir = path.join(process.cwd(), "public");
 const portfolioDir = path.join(publicDir, "portfolio");
+
 
 const imageExtensions = new Set([
   ".jpg",
@@ -59,6 +80,7 @@ const imageExtensions = new Set([
   ".avif",
   ".svg",
 ]);
+
 
 async function getImageDimensions(
   filePath: string
@@ -71,6 +93,7 @@ async function getImageDimensions(
   };
 }
 
+
 function titleFromFilename(file: string) {
   return path
     .basename(file, path.extname(file))
@@ -78,13 +101,16 @@ function titleFromFilename(file: string) {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+
 function isCategory(value: string): value is Category {
   return categories.includes(value as Category);
 }
 
+
 function isYearFolder(name: string) {
   return /^\d{4}$/.test(name);
 }
+
 
 function isArtTypeFolder(
   name: string
@@ -92,11 +118,13 @@ function isArtTypeFolder(
   return artTypeSlugs.includes(name as (typeof artTypeSlugs)[number]);
 }
 
+
 function isReviewTypeFolder(
   name: string
 ): name is (typeof reviewTypeSlugs)[number] {
   return reviewTypeSlugs.includes(name as (typeof reviewTypeSlugs)[number]);
 }
+
 
 async function scanYearFolder(
   category: Category,
@@ -177,6 +205,10 @@ async function scanYearFolder(
       width: variantDimensions[src].width,
       height: variantDimensions[src].height,
       variantDimensions,
+
+      // Gallery support.
+      gallery: meta?.gallery,
+      coverIndex: meta?.coverIndex,
     });
   }
 
@@ -209,11 +241,16 @@ async function scanYearFolder(
       variantDimensions: {
         [src]: dimensions,
       },
+
+      // Gallery support.
+      gallery: meta?.gallery,
+      coverIndex: meta?.coverIndex,
     });
   }
 
   return out;
 }
+
 
 function resolveArtType(meta: MetadataItem | undefined, category: Category): ArtType | undefined {
   if (category !== "arts") {
@@ -227,6 +264,7 @@ function resolveArtType(meta: MetadataItem | undefined, category: Category): Art
   return defaultArtType;
 }
 
+
 function resolveReviewType(meta: MetadataItem | undefined, category: Category): ReviewType | undefined {
   if (category !== "reviews") {
     return undefined;
@@ -239,6 +277,7 @@ function resolveReviewType(meta: MetadataItem | undefined, category: Category): 
   return defaultReviewType;
 }
 
+
 function itemFromRemoteMetadata(meta: MetadataItem): PortfolioItem | null {
   if (!meta.src || !meta.category || !isCategory(meta.category)) {
     return null;
@@ -247,6 +286,17 @@ function itemFromRemoteMetadata(meta: MetadataItem): PortfolioItem | null {
   const category = meta.category;
   const width = meta.width ?? 800;
   const height = meta.height ?? 1000;
+  const variants =
+    meta.variants && meta.variants.length > 0 ? meta.variants : [meta.src];
+
+  const variantDimensions: Record<string, ImageDimensions> =
+    meta.variantDimensions ?? {};
+
+  for (const variantSrc of variants) {
+    if (!variantDimensions[variantSrc]) {
+      variantDimensions[variantSrc] = { width, height };
+    }
+  }
 
   return {
     src: meta.src,
@@ -257,14 +307,17 @@ function itemFromRemoteMetadata(meta: MetadataItem): PortfolioItem | null {
     date: meta.date,
     artType: resolveArtType(meta, category),
     reviewType: resolveReviewType(meta, category),
-    variants: [meta.src],
+    variants,
     width,
     height,
-    variantDimensions: {
-      [meta.src]: { width, height },
-    },
+    variantDimensions,
+
+    // Gallery support.
+    gallery: meta.gallery,
+    coverIndex: meta.coverIndex,
   };
 }
+
 
 async function scanPortfolioItems(): Promise<PortfolioItem[]> {
   const metadataEntries = await readPortfolioMetadata();
@@ -432,11 +485,15 @@ async function scanPortfolioItems(): Promise<PortfolioItem[]> {
             note: meta?.note ?? "",
             date: meta?.date,
             artType: resolveArtType(meta, metaCategory),
-      reviewType: resolveReviewType(meta, metaCategory),
+            reviewType: resolveReviewType(meta, metaCategory),
             variants,
             width: dimensions.width,
             height: dimensions.height,
             variantDimensions,
+
+            // Gallery support.
+            gallery: meta?.gallery,
+            coverIndex: meta?.coverIndex,
           });
         }
       }
@@ -466,13 +523,17 @@ async function scanPortfolioItems(): Promise<PortfolioItem[]> {
             note: meta?.note ?? "",
             date: meta?.date,
             artType: resolveArtType(meta, metaCategory),
-      reviewType: resolveReviewType(meta, metaCategory),
+            reviewType: resolveReviewType(meta, metaCategory),
             variants: [src],
             width: dimensions.width,
             height: dimensions.height,
             variantDimensions: {
               [src]: dimensions,
             },
+
+            // Gallery support.
+            gallery: meta?.gallery,
+            coverIndex: meta?.coverIndex,
           });
         }
       }
@@ -502,13 +563,16 @@ async function scanPortfolioItems(): Promise<PortfolioItem[]> {
   });
 }
 
+
 const getCachedPortfolioItems = unstable_cache(
   scanPortfolioItems,
   ["portfolio-items"],
   { revalidate: 300, tags: ["portfolio"] }
 );
 
+
 export const getPortfolioItems = cache(async () => getCachedPortfolioItems());
+
 
 export async function getItemsByCategory(
   category: Category
@@ -517,6 +581,7 @@ export async function getItemsByCategory(
 
   return items.filter((item) => item.category === category);
 }
+
 
 export async function getItemsGroupedByCategory() {
   const grouped = await Promise.all(
@@ -532,6 +597,7 @@ export async function getItemsGroupedByCategory() {
     PortfolioItem[]
   >;
 }
+
 
 export function getLogoSrc() {
   const logoPng = path.join(publicDir, "assets", "logo.png");

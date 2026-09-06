@@ -7,20 +7,52 @@ import {
   writeCloudinaryMetadataRaw,
 } from "@/lib/cloudinary";
 
-export type PortfolioMetadataEntry = {
+ export type PortfolioGalleryImage = {
   src: string;
   cloudinaryPublicId?: string;
-  category?: string;
-  year?: string;
-  title?: string;
-  note?: string;
-  date?: string;
-  artType?: string;
-  reviewType?: string;
   width?: number;
   height?: number;
 };
 
+export type PortfolioMetadataEntry = {
+  src: string;
+
+  cloudinaryPublicId?: string;
+
+  category?: string;
+
+  year?: string;
+
+  title?: string;
+
+  note?: string;
+
+  date?: string;
+
+  artType?: string;
+
+  reviewType?: string;
+
+  width?: number;
+
+  height?: number;
+
+  variants?: string[];
+
+  variantDimensions?: Record<
+    string,
+    {
+      width: number;
+      height: number;
+    }
+  >;
+
+  // New: optional gallery
+  gallery?: PortfolioGalleryImage[];
+
+  // New: selected cover index
+  coverIndex?: number;
+};
 const portfolioDir = path.join(process.cwd(), "public", "portfolio");
 const metadataPath = path.join(portfolioDir, "metadata.json");
 

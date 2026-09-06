@@ -93,14 +93,6 @@
     "reviewType": "Books"
   },
   {
-    "src": "/portfolio/design/2028/photo_2026-06-17 00.53.32.jpeg",
-    "category": "design",
-    "year": "2028",
-    "title": "Test1",
-    "note": "This flower represents beauty, growth, and the quiet strength found in nature. I wanted to capture the delicate balance between softness and resilience—the way a flower can appear fragile while continuing to grow toward the light.Sun: Full sun to light shade (afternoon shade in hot climates helps)\nSoil: Well-draining, slightly acidic to neutral, rich in organic matter\nPlanting: Bulbs in fall (or early spring in cold areas); plant 3× the bulb’s height deep\nWater: Consistent moisture, especially while growing; avoid waterlogged soil.This flower represents beauty, growth, and the quiet strength found in nature. I wanted to capture the delicate balance between softness and resilience—the way a flower can appear fragile while continuing to grow toward the light.Sun: Full sun to light shade (afternoon shade in hot climates helps)\nSoil: Well-draining, slightly acidic to neutral, rich in organic matter\nPlanting: Bulbs in fall (or early spring in cold areas); plant 3× the bulb’s height deep\nWater: Consistent moisture, especially while growing; avoid waterlogged soil",
-    "artType": "Sketches"
-  },
-  {
     "src": "/portfolio/design/2028/x.png",
     "category": "design",
     "year": "2028",
@@ -135,9 +127,41 @@
     "src": "/portfolio/design/2027/BW.png",
     "category": "design",
     "year": "2027",
-    "title": "BW",
+    "title": "BMW",
     "note": "",
     "artType": "Digital Art",
     "reviewType": "Movies"
+  },
+  {
+    "src": "https://res.cloudinary.com/dgow1oztd/image/upload/v1788700262/thelyka/portfolio/arts/sketches/2026/1788700262463-2-916623330426113285.webp",
+    "cloudinaryPublicId": "thelyka/portfolio/arts/sketches/2026/1788700262463-2-916623330426113285",
+    "category": "design",
+    "year": "2026",
+    "title": "20250731 1857 image",
+    "note": "",
+    "width": 736,
+    "height": 1106,
+    "gallery": [
+      {
+        "src": "https://res.cloudinary.com/dgow1oztd/image/upload/v1788700256/thelyka/portfolio/arts/sketches/2026/1788700253229-0-20250731_1857_image.png",
+        "cloudinaryPublicId": "thelyka/portfolio/arts/sketches/2026/1788700253229-0-20250731_1857_image",
+        "width": 688,
+        "height": 1024
+      },
+      {
+        "src": "https://res.cloudinary.com/dgow1oztd/image/upload/v1788700261/thelyka/portfolio/arts/sketches/2026/1788700256730-1-20260525_184137.jpg",
+        "cloudinaryPublicId": "thelyka/portfolio/arts/sketches/2026/1788700256730-1-20260525_184137",
+        "width": 4000,
+        "height": 3000
+      },
+      {
+        "src": "https://res.cloudinary.com/dgow1oztd/image/upload/v1788700262/thelyka/portfolio/arts/sketches/2026/1788700262463-2-916623330426113285.webp",
+        "cloudinaryPublicId": "thelyka/portfolio/arts/sketches/2026/1788700262463-2-916623330426113285",
+        "width": 736,
+        "height": 1106
+      }
+    ],
+    "coverIndex": 2,
+    "artType": "Sketches"
   }
 ]
