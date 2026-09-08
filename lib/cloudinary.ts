@@ -1,4 +1,3 @@
-
 import { v2 as cloudinary } from "cloudinary";
 
 export const CLOUDINARY_METADATA_PUBLIC_ID =
@@ -38,6 +37,17 @@ export function isCloudinaryConfigured() {
   );
 }
 
+export function createCloudinaryUploadSignature(
+  params: Record<string, string | number>
+) {
+  const client = ensureConfigured();
+
+  return client.utils.api_sign_request(
+    params,
+    process.env.CLOUDINARY_API_SECRET!
+  );
+}
+
 export function isCloudinarySrc(src: string) {
   return src.includes("res.cloudinary.com");
 }
@@ -50,25 +60,27 @@ export function portfolioUsesCloudinary() {
    CLOUDINARY RAW READ HELPER
    ========================================================= */
 
- async function fetchCloudinaryRaw(
+async function fetchCloudinaryRaw(
   publicId: string
 ): Promise<string | null> {
   const client = ensureConfigured();
 
   try {
-    // 1. Ask Admin API for the latest version (this hits origin, not CDN)
+    // Ask Admin API for the latest version.
     let version: number | undefined;
+
     try {
       const resource = await client.api.resource(publicId, {
         resource_type: "raw",
       });
+
       version = resource.version;
     } catch {
-      // Resource doesn't exist yet
+      // Resource doesn't exist.
       return null;
     }
 
-    // 2. Build a versioned URL so we always get the newest file
+    // Build a versioned URL so we always get the newest file.
     const url =
       client.url(publicId, {
         resource_type: "raw",
@@ -93,15 +105,22 @@ export function portfolioUsesCloudinary() {
 
     return await response.text();
   } catch (error) {
-  if (
-    error instanceof Error &&
-    (error.name === "TimeoutError" || error.message.includes("fetch failed"))
-  ) {
-    console.warn(`[cloudinary] read timed out for "${publicId}"`);
-    return null; // ← do not throw
+    if (
+      error instanceof Error &&
+      (
+        error.name === "TimeoutError" ||
+        error.message.includes("fetch failed")
+      )
+    ) {
+      console.warn(
+        `[cloudinary] read timed out for "${publicId}"`
+      );
+
+      return null;
+    }
+
+    throw error;
   }
-  throw error;
-}
 }
 
 /* =========================================================
@@ -116,21 +135,23 @@ export async function readCloudinaryMetadataRaw(): Promise<
   );
 }
 
-  export async function getRawResourceVersion(
-    publicId: string
-  ): Promise<number | null> {
-    const client = ensureConfigured();
+export async function getRawResourceVersion(
+  publicId: string
+): Promise<number | null> {
+  const client = ensureConfigured();
 
-    try {
-      const result = await client.api.resource(publicId, {
-        resource_type: "raw",
-      });
-      // version changes every time the file is overwritten
-      return typeof result.version === "number" ? result.version : null;
-    } catch {
-      return null;
-    }
+  try {
+    const result = await client.api.resource(publicId, {
+      resource_type: "raw",
+    });
+
+    return typeof result.version === "number"
+      ? result.version
+      : null;
+  } catch {
+    return null;
   }
+}
 
 export async function writeCloudinaryMetadataRaw(
   json: string
@@ -162,57 +183,6 @@ export async function writeCloudinaryMetadataRaw(
 /* =========================================================
    PORTFOLIO IMAGES
    ========================================================= */
-
-type UploadImageResult = {
-  secureUrl: string;
-  publicId: string;
-  width: number;
-  height: number;
-};
-
-export async function uploadPortfolioImage(
-  buffer: Buffer,
-  folder: string,
-  publicId: string
-): Promise<UploadImageResult> {
-  const client = ensureConfigured();
-
-  const result = await new Promise<{
-    secure_url: string;
-    public_id: string;
-    width?: number;
-    height?: number;
-  }>((resolve, reject) => {
-    const upload = client.uploader.upload_stream(
-      {
-        folder,
-        public_id: publicId,
-        overwrite: false,
-        resource_type: "image",
-      },
-      (error, uploadResult) => {
-        if (error || !uploadResult) {
-          reject(
-            error ??
-              new Error("Cloudinary upload failed.")
-          );
-          return;
-        }
-
-        resolve(uploadResult);
-      }
-    );
-
-    upload.end(buffer);
-  });
-
-  return {
-    secureUrl: result.secure_url,
-    publicId: result.public_id,
-    width: result.width ?? 1,
-    height: result.height ?? 1,
-  };
-}
 
 export async function deleteCloudinaryImage(
   publicId: string
@@ -263,6 +233,7 @@ export async function uploadBlogImage(
                 "Cloudinary blog image upload failed."
               )
           );
+
           return;
         }
 
@@ -278,6 +249,77 @@ export async function uploadBlogImage(
     publicId: result.public_id,
   };
 }
+
+ 
+export async function getBlogImagesFromCloudinary(): Promise<
+  {
+    src: string;
+    year: string;
+    filename: string;
+    publicId: string;
+  }[]
+> {
+  const client = ensureConfigured();
+
+  const resources: Array<{
+    secure_url?: string;
+    public_id?: string;
+  }> = [];
+
+  let nextCursor: string | undefined;
+
+  do {
+    const options: Record<string, unknown> = {
+      type: "upload",
+      resource_type: "image",
+      prefix: "thelyka/blog-media/",
+      max_results: 500,
+    };
+
+    if (nextCursor) {
+      options.next_cursor = nextCursor;
+    }
+
+    const result = await client.api.resources(options);
+
+    resources.push(...(result.resources ?? []));
+
+    nextCursor = result.next_cursor;
+  } while (nextCursor);
+
+  return resources
+    .filter(
+      (resource) =>
+        typeof resource.secure_url === "string" &&
+        typeof resource.public_id === "string"
+    )
+    .map((resource) => {
+      const publicId = resource.public_id!;
+      const src = resource.secure_url!;
+
+      const parts = publicId.split("/");
+
+      const filename =
+        parts[parts.length - 1] || publicId;
+
+      const year =
+        parts.length >= 3 &&
+        /^\d{4}$/.test(parts[2])
+          ? parts[2]
+          : "";
+
+      return {
+        src,
+        year,
+        filename,
+        publicId,
+      };
+    })
+    .sort((a, b) =>
+      b.src.localeCompare(a.src)
+    );
+}
+
 
 /* =========================================================
    GENERIC RAW FILES
@@ -305,8 +347,11 @@ export async function uploadCloudinaryRaw(
         if (error || !uploadResult) {
           reject(
             error ??
-              new Error("Cloudinary raw upload failed.")
+              new Error(
+                "Cloudinary raw upload failed."
+              )
           );
+
           return;
         }
 

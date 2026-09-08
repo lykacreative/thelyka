@@ -1,382 +1,495 @@
+
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
-import path from "path";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
 import {
-  artSlugByType,
   defaultArtType,
   isArtType,
 } from "@/lib/art-types";
 import {
   defaultReviewType,
   isReviewType,
-  reviewSlugByType,
 } from "@/lib/review-types";
 import {
   isCloudinaryConfigured,
-  portfolioUsesCloudinary,
-  uploadPortfolioImage,
 } from "@/lib/cloudinary";
+import { connectToDatabase } from "@/lib/mongodb";
 import {
-  readPortfolioMetadata,
-  writePortfolioMetadata,
-  type PortfolioMetadataEntry,
-} from "@/lib/portfolio-metadata";
-import { writeFile, mkdir } from "fs/promises";
+  PORTFOLIO_COLLECTION,
+  type PortfolioItemDoc,
+} from "@/lib/portfolio-collection";
 
 export const runtime = "nodejs";
 
-function usesCloudStorage() {
+function isCloudStorageConfigured() {
   return (
-    portfolioUsesCloudinary() ||
-    (isCloudinaryConfigured() &&
-      process.env.PORTFOLIO_STORAGE === "cloudinary")
+    isCloudinaryConfigured() &&
+    process.env.PORTFOLIO_STORAGE === "cloudinary"
   );
 }
 
-export async function POST(req: NextRequest) {
+type GalleryImagePayload = {
+  src: string;
+  cloudinaryPublicId?: string;
+  width?: number;
+  height?: number;
+};
+
+type UploadPayload = {
+  title?: unknown;
+  category?: unknown;
+  year?: unknown;
+  date?: unknown;
+  note?: unknown;
+  artType?: unknown;
+  reviewType?: unknown;
+  src?: unknown;
+  cloudinaryPublicId?: unknown;
+  width?: unknown;
+  height?: unknown;
+  gallery?: unknown;
+  coverIndex?: unknown;
+};
+
+function parseGallery(
+  value: unknown
+): GalleryImagePayload[] | null {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+
+  const images: GalleryImagePayload[] = [];
+
+  for (const item of value) {
+    if (!item || typeof item !== "object") {
+      return null;
+    }
+
+    const image = item as Record<string, unknown>;
+
+    if (
+      typeof image.src !== "string" ||
+      !image.src.trim()
+    ) {
+      return null;
+    }
+
+    try {
+      const url = new URL(image.src);
+
+      if (
+        url.hostname !== "res.cloudinary.com"
+      ) {
+        return null;
+      }
+    } catch {
+      return null;
+    }
+
+    images.push({
+      src: image.src.trim(),
+
+      ...(typeof image.cloudinaryPublicId === "string" &&
+      image.cloudinaryPublicId.trim()
+        ? {
+            cloudinaryPublicId:
+              image.cloudinaryPublicId.trim(),
+          }
+        : {}),
+
+      ...(typeof image.width === "number" &&
+      Number.isFinite(image.width)
+        ? {
+            width: image.width,
+          }
+        : {}),
+
+      ...(typeof image.height === "number" &&
+      Number.isFinite(image.height)
+        ? {
+            height: image.height,
+          }
+        : {}),
+    });
+  }
+
+  return images;
+}
+
+export async function POST(
+  req: NextRequest
+) {
+  // ------------------------------------------------------------
+  // Authentication
+  // ------------------------------------------------------------
+
   try {
     if (!(await isAdminAuthenticated())) {
       return NextResponse.json(
-        { error: "Not authenticated." },
-        { status: 401 }
+        {
+          error: "Not authenticated.",
+        },
+        {
+          status: 401,
+        }
       );
     }
   } catch {
     return NextResponse.json(
-      { error: "Not authenticated." },
-      { status: 401 }
+      {
+        error: "Not authenticated.",
+      },
+      {
+        status: 401,
+      }
     );
   }
 
-  if (!usesCloudStorage() && process.env.NODE_ENV === "production") {
+  // ------------------------------------------------------------
+  // Cloudinary is required
+  // ------------------------------------------------------------
+
+  if (!isCloudStorageConfigured()) {
     return NextResponse.json(
       {
         error:
-          "Cloudinary is not configured for production uploads. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET on Vercel.",
+          "Cloudinary is required for portfolio uploads. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET, and PORTFOLIO_STORAGE=cloudinary.",
       },
-      { status: 500 }
+      {
+        status: 500,
+      }
     );
   }
+
+  // ------------------------------------------------------------
+  // Parse JSON
+  // ------------------------------------------------------------
+
+  let body: UploadPayload;
 
   try {
-    const formData = await req.formData();
-
-    /*
-     * Backwards compatible upload handling:
-     *
-     * Single image:
-     *   file
-     *
-     * Gallery:
-     *   files
-     *   files
-     *   files
-     *   ...
-     *
-     * The frontend can submit any number of `files`.
-     */
-
-    const galleryFiles = formData
-      .getAll("files")
-      .filter((value): value is File => value instanceof File);
-
-    const singleFile = formData.get("file");
-
-    const files: File[] =
-      galleryFiles.length > 0
-        ? galleryFiles
-        : singleFile instanceof File
-          ? [singleFile]
-          : [];
-
-    const title =
-      (formData.get("title") as string)?.trim() || "";
-
-    const category =
-      (formData.get("category") as string)?.toLowerCase().trim();
-
-    const year =
-      (formData.get("year") as string)?.trim() ||
-      new Date().getFullYear().toString();
-
-    const date =
-      (formData.get("date") as string)?.trim() || undefined;
-
-    const note =
-      (formData.get("note") as string)?.trim() || "";
-
-    const artTypeInput =
-      (formData.get("artType") as string)?.trim() ||
-      defaultArtType;
-
-    const artType = isArtType(artTypeInput)
-      ? artTypeInput
-      : defaultArtType;
-
-    const reviewTypeInput =
-      (formData.get("reviewType") as string)?.trim() ||
-      defaultReviewType;
-
-    const reviewType = isReviewType(reviewTypeInput)
-      ? reviewTypeInput
-      : defaultReviewType;
-
-    /*
-     * coverIndex is the index of the selected cover
-     * inside the submitted files array.
-     *
-     * Example:
-     * files[0] = image A
-     * files[1] = image B
-     * files[2] = image C
-     *
-     * coverIndex=1 means image B is the cover.
-     */
-    const coverIndexRaw =
-      (formData.get("coverIndex") as string)?.trim() || "0";
-
-    const parsedCoverIndex = Number.parseInt(
-      coverIndexRaw,
-      10
-    );
-
-    const coverIndex = Number.isInteger(parsedCoverIndex)
-      ? parsedCoverIndex
-      : 0;
-
-    if (files.length === 0) {
-      return NextResponse.json(
-        { error: "No image file provided." },
-        { status: 400 }
-      );
-    }
-
-    if (!category) {
-      return NextResponse.json(
-        { error: "Category is required." },
-        { status: 400 }
-      );
-    }
-
-    if (!title) {
-      return NextResponse.json(
-        { error: "Title is required." },
-        { status: 400 }
-      );
-    }
-
-    if (!/^\d{4}$/.test(year)) {
-      return NextResponse.json(
-        { error: "Year must be a 4-digit number." },
-        { status: 400 }
-      );
-    }
-
-    if (
-      coverIndex < 0 ||
-      coverIndex >= files.length
-    ) {
-      return NextResponse.json(
-        { error: "Invalid cover image selection." },
-        { status: 400 }
-      );
-    }
-
-    const isArts = category === "arts";
-    const isReviews = category === "reviews";
-
-    const artTypeFolder = isArts
-      ? artSlugByType[artType]
-      : "";
-
-    const reviewTypeFolder = isReviews
-      ? reviewSlugByType[reviewType]
-      : "";
-
-    const typeFolder =
-      artTypeFolder || reviewTypeFolder;
-
-    const uploadedImages: Array<{
-      src: string;
-      cloudinaryPublicId?: string;
-      width?: number;
-      height?: number;
-    }> = [];
-
-    /*
-     * Upload every image.
-     */
-    for (let index = 0; index < files.length; index++) {
-      const file = files[index];
-
-      const ext =
-        path.extname(file.name) || ".jpg";
-
-      const safeName =
-        `${Date.now()}-${index}-` +
-        file.name
-          .replace(/\.[^/.]+$/, "")
-          .replace(/[^a-zA-Z0-9-_]/g, "-")
-          .toLowerCase();
-
-      const buffer = Buffer.from(
-        await file.arrayBuffer()
-      );
-
-      let src: string;
-      let cloudinaryPublicId: string | undefined;
-      let width: number | undefined;
-      let height: number | undefined;
-
-      if (usesCloudStorage()) {
-        const folder = [
-          "thelyka",
-          "portfolio",
-          category,
-          ...(typeFolder
-            ? [typeFolder, year]
-            : [year]),
-        ].join("/");
-
-        const uploaded =
-          await uploadPortfolioImage(
-            buffer,
-            folder,
-            safeName
-          );
-
-        src = uploaded.secureUrl;
-        cloudinaryPublicId =
-          uploaded.publicId;
-        width = uploaded.width;
-        height = uploaded.height;
-      } else {
-        const uploadDir = path.join(
-          process.cwd(),
-          "public",
-          "portfolio",
-          category,
-          ...(typeFolder
-            ? [typeFolder, year]
-            : [year])
-        );
-
-        await mkdir(uploadDir, {
-          recursive: true,
-        });
-
-        const filename =
-          `${safeName}${ext}`;
-
-        await writeFile(
-          path.join(uploadDir, filename),
-          buffer
-        );
-
-        src = typeFolder
-          ? `/portfolio/${category}/${typeFolder}/${year}/${filename}`
-          : `/portfolio/${category}/${year}/${filename}`;
-      }
-
-      uploadedImages.push({
-        src,
-        cloudinaryPublicId,
-        width,
-        height,
-      });
-    }
-
-    /*
-     * The selected cover becomes `src`.
-     */
-    const coverImage =
-      uploadedImages[coverIndex];
-
-    /*
-     * Keep all images in `images`.
-     *
-     * For a single upload:
-     *
-     * images = [the uploaded image]
-     *
-     * For a gallery:
-     *
-     * images = [image1, image2, image3, ...]
-     */
-    const metadata = await readPortfolioMetadata();
-
-    const entry: PortfolioMetadataEntry = {
-      src: coverImage.src,
-
-      cloudinaryPublicId:
-        coverImage.cloudinaryPublicId,
-
-      category,
-      year,
-      title,
-      note,
-      date,
-
-      width: coverImage.width,
-      height: coverImage.height,
-
-      gallery: uploadedImages,
-
-      coverIndex,
-
-      ...(isArts
-        ? { artType }
-        : {}),
-
-      ...(isReviews
-        ? { reviewType }
-        : {}),
-    };
-
-    /*
-     * Replace an existing entry with the same cover URL.
-     */
-    const next = metadata.filter(
-      (item) => item.src !== entry.src
-    );
-
-    next.push(entry);
-
-    await writePortfolioMetadata(next);
-
-    revalidateTag("portfolio", {
-      expire: 0,
-    });
-
-    return NextResponse.json({
-      success: true,
-
-      /*
-       * Cover image.
-       */
-      src: coverImage.src,
-
-      /*
-       * Complete gallery.
-       */
-      gallery: uploadedImages,
-
-      coverIndex,
-
-      message:
-        uploadedImages.length > 1
-          ? "Gallery uploaded successfully"
-          : "Uploaded successfully",
-    });
-  } catch (error) {
-    console.error("Upload error:", error);
-
+    body = (await req.json()) as UploadPayload;
+  } catch {
     return NextResponse.json(
       {
-        error: "Upload failed",
+        error: "Invalid JSON request body.",
       },
-      { status: 500 }
+      {
+        status: 400,
+      }
     );
   }
+
+  // ------------------------------------------------------------
+  // Metadata
+  // ------------------------------------------------------------
+
+  const title =
+    typeof body.title === "string"
+      ? body.title.trim()
+      : "";
+
+  const category =
+    typeof body.category === "string"
+      ? body.category.toLowerCase().trim()
+      : "";
+
+  const year =
+    typeof body.year === "string" &&
+    body.year.trim()
+      ? body.year.trim()
+      : new Date()
+          .getFullYear()
+          .toString();
+
+  const date =
+    typeof body.date === "string"
+      ? body.date.trim() || undefined
+      : undefined;
+
+  const note =
+    typeof body.note === "string"
+      ? body.note.trim()
+      : "";
+
+  // ------------------------------------------------------------
+  // Art type
+  // ------------------------------------------------------------
+
+  const artTypeInput =
+    typeof body.artType === "string" &&
+    body.artType.trim()
+      ? body.artType.trim()
+      : defaultArtType;
+
+  const artType = isArtType(artTypeInput)
+    ? artTypeInput
+    : defaultArtType;
+
+  // ------------------------------------------------------------
+  // Review type
+  // ------------------------------------------------------------
+
+  const reviewTypeInput =
+    typeof body.reviewType === "string" &&
+    body.reviewType.trim()
+      ? body.reviewType.trim()
+      : defaultReviewType;
+
+  const reviewType = isReviewType(
+    reviewTypeInput
+  )
+    ? reviewTypeInput
+    : defaultReviewType;
+
+  // ------------------------------------------------------------
+  // Basic validation
+  // ------------------------------------------------------------
+
+  if (!title) {
+    return NextResponse.json(
+      {
+        error: "Title is required.",
+      },
+      {
+        status: 400,
+      }
+    );
+  }
+
+  if (!category) {
+    return NextResponse.json(
+      {
+        error: "Category is required.",
+      },
+      {
+        status: 400,
+      }
+    );
+  }
+
+  if (!/^\d{4}$/.test(year)) {
+    return NextResponse.json(
+      {
+        error: "Year must be a 4-digit number.",
+      },
+      {
+        status: 400,
+      }
+    );
+  }
+
+  // ------------------------------------------------------------
+  // Gallery
+  //
+  // Images have already been uploaded directly to Cloudinary
+  // by the browser.
+  // ------------------------------------------------------------
+
+  const gallery = parseGallery(body.gallery);
+
+  if (!gallery) {
+    return NextResponse.json(
+      {
+        error: "Invalid gallery data.",
+      },
+      {
+        status: 400,
+      }
+    );
+  }
+
+  if (gallery.length === 0) {
+    return NextResponse.json(
+      {
+        error:
+          "At least one Cloudinary image is required.",
+      },
+      {
+        status: 400,
+      }
+    );
+  }
+
+  // ------------------------------------------------------------
+  // Validate Cloudinary metadata
+  // ------------------------------------------------------------
+
+  for (const image of gallery) {
+    if (
+      !image.cloudinaryPublicId ||
+      !image.cloudinaryPublicId.trim()
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Every portfolio image must include a Cloudinary public ID.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+  }
+
+  // ------------------------------------------------------------
+  // Cover index
+  // ------------------------------------------------------------
+
+  const coverIndex =
+    typeof body.coverIndex === "number"
+      ? body.coverIndex
+      : typeof body.coverIndex === "string"
+        ? Number.parseInt(
+            body.coverIndex,
+            10
+          )
+        : 0;
+
+  if (
+    !Number.isInteger(coverIndex) ||
+    coverIndex < 0 ||
+    coverIndex >= gallery.length
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Invalid cover image selection.",
+      },
+      {
+        status: 400,
+      }
+    );
+  }
+
+  // ------------------------------------------------------------
+  // Selected cover
+  // ------------------------------------------------------------
+
+  const coverImage = gallery[coverIndex];
+
+  if (!coverImage) {
+    return NextResponse.json(
+      {
+        error:
+          "Selected cover image was not found.",
+      },
+      {
+        status: 400,
+      }
+    );
+  }
+
+  // ------------------------------------------------------------
+  // Verify src matches selected cover
+  // ------------------------------------------------------------
+
+  if (
+    typeof body.src === "string" &&
+    body.src.trim() &&
+    body.src.trim() !== coverImage.src
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "The supplied cover image does not match the selected gallery image.",
+      },
+      {
+        status: 400,
+      }
+    );
+  }
+
+  // ------------------------------------------------------------
+  // Category-specific metadata
+  // ------------------------------------------------------------
+
+  const isArts = category === "arts";
+  const isReviews = category === "reviews";
+
+  // ------------------------------------------------------------
+  // Build MongoDB document
+  // ------------------------------------------------------------
+
+  const now = new Date();
+
+  const doc: PortfolioItemDoc = {
+    src: coverImage.src,
+
+    cloudinaryPublicId:
+      coverImage.cloudinaryPublicId,
+
+    category,
+
+    year,
+
+    title,
+
+    note: note || null,
+
+    date: date ?? null,
+
+    width: coverImage.width,
+
+    height: coverImage.height,
+
+    gallery,
+
+    coverIndex,
+
+    ...(isArts
+      ? {
+          artType,
+        }
+      : {}),
+
+    ...(isReviews
+      ? {
+          reviewType,
+        }
+      : {}),
+
+    createdAt: now,
+
+    updatedAt: now,
+  };
+
+  // ------------------------------------------------------------
+  // Save metadata to MongoDB
+  // ------------------------------------------------------------
+
+  const { db } =
+    await connectToDatabase();
+
+  const collection = db.collection(
+  PORTFOLIO_COLLECTION
+);
+
+  const result =
+    await collection.insertOne(
+      doc as any
+    );
+
+  // ------------------------------------------------------------
+  // Revalidate portfolio cache
+  // ------------------------------------------------------------
+
+  revalidateTag("portfolio", {
+    expire: 0,
+  });
+
+  // ------------------------------------------------------------
+  // Response
+  // ------------------------------------------------------------
+
+  const entry = {
+    ...doc,
+    _id: result.insertedId.toString(),
+  };
+
+  return NextResponse.json({
+    ok: true,
+    entry,
+  });
 }
+

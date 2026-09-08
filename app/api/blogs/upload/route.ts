@@ -1,26 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
 import {
   isCloudinaryConfigured,
   uploadBlogImage,
+  deleteCloudinaryImage,
 } from "@/lib/cloudinary";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
 
 export const runtime = "nodejs";
-
-function useCloudinary() {
-  return (
-    process.env.NODE_ENV === "production" &&
-    isCloudinaryConfigured()
-  );
-}
 
 export async function POST(req: NextRequest) {
   if (!(await isAdminAuthenticated())) {
     return NextResponse.json(
       { error: "Not authenticated." },
       { status: 401 }
+    );
+  }
+
+  if (!isCloudinaryConfigured()) {
+    return NextResponse.json(
+      { error: "Cloudinary is not configured." },
+      { status: 500 }
     );
   }
 
@@ -62,63 +61,86 @@ export async function POST(req: NextRequest) {
     const filename =
       originalName || `image-${Date.now()}.jpg`;
 
-    /*
-     * Production:
-     * Upload blog image to Cloudinary.
-     */
-    if (useCloudinary()) {
-      const result = await uploadBlogImage(
-        buffer,
-        year,
-        filename
-      );
-
-      return NextResponse.json({
-        success: true,
-        filename,
-        year,
-        src: result.secureUrl,
-        publicId: result.publicId,
-        storage: "cloudinary",
-      });
-    }
-
-    /*
-     * Local development:
-     * Continue storing images in public/media.
-     */
-    const uploadDir = path.join(
-      process.cwd(),
-      "public",
-      "media",
-      year
-    );
-
-    await mkdir(uploadDir, {
-      recursive: true,
-    });
-
-    const filePath = path.join(
-      uploadDir,
+    const result = await uploadBlogImage(
+      buffer,
+      year,
       filename
     );
-
-    await writeFile(filePath, buffer);
-
-    const publicUrl = `/media/${year}/${filename}`;
 
     return NextResponse.json({
       success: true,
       filename,
       year,
-      src: publicUrl,
-      storage: "local",
+      src: result.secureUrl,
+      publicId: result.publicId,
+      storage: "cloudinary",
     });
   } catch (error) {
     console.error("Blog image upload error:", error);
 
     return NextResponse.json(
       { error: "Failed to upload image." },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  if (!(await isAdminAuthenticated())) {
+    return NextResponse.json(
+      { error: "Not authenticated." },
+      { status: 401 }
+    );
+  }
+
+  if (!isCloudinaryConfigured()) {
+    return NextResponse.json(
+      { error: "Cloudinary is not configured." },
+      { status: 500 }
+    );
+  }
+
+  try {
+    const body = (await req.json()) as {
+      publicId?: unknown;
+    };
+
+    const publicId =
+      typeof body.publicId === "string"
+        ? body.publicId.trim()
+        : "";
+
+    if (!publicId) {
+      return NextResponse.json(
+        { error: "Missing Cloudinary public ID." },
+        { status: 400 }
+      );
+    }
+
+    // Only allow deletion of blog images.
+    if (!publicId.startsWith("thelyka/blog-media/")) {
+      return NextResponse.json(
+        { error: "Invalid Cloudinary image." },
+        { status: 400 }
+      );
+    }
+
+    await deleteCloudinaryImage(publicId);
+
+    return NextResponse.json({
+      success: true,
+      publicId,
+    });
+  } catch (error) {
+    console.error("BLOG IMAGE DELETE ERROR:", error);
+
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to delete image.",
+      },
       { status: 500 }
     );
   }

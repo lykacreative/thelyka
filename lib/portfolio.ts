@@ -2,37 +2,38 @@ import fs from "node:fs";
 import path from "node:path";
 import { unstable_cache } from "next/cache";
 import { cache } from "react";
-import sharp from "sharp";
+
 import {
-  artTypeSlugs,
   defaultArtType,
   isArtType,
   type ArtType,
 } from "@/lib/art-types";
+
 import {
   defaultReviewType,
   isReviewType,
-  reviewTypeSlugs,
   type ReviewType,
 } from "@/lib/review-types";
+
+import { connectToDatabase } from "@/lib/mongodb";
+
 import {
-  isRemotePortfolioSrc,
-  readPortfolioMetadata,
-  type PortfolioMetadataEntry,
-} from "@/lib/portfolio-metadata";
+  PORTFOLIO_COLLECTION,
+  type PortfolioItemDoc,
+} from "@/lib/portfolio-collection";
 
-
-export const categories = ["design", "reviews", "arts"] as const;
-
+export const categories = [
+  "design",
+  "reviews",
+  "arts",
+] as const;
 
 export type Category = (typeof categories)[number];
-
 
 export type ImageDimensions = {
   width: number;
   height: number;
 };
-
 
 export type PortfolioGalleryImage = {
   src: string;
@@ -40,7 +41,6 @@ export type PortfolioGalleryImage = {
   width?: number;
   height?: number;
 };
-
 
 export type PortfolioItem = {
   src: string;
@@ -52,556 +52,382 @@ export type PortfolioItem = {
   artType?: ArtType;
   reviewType?: ReviewType;
 
-  // Existing single-image variant system — leave untouched.
+  // Existing single-image variant system.
   variants: string[];
   width: number;
   height: number;
-  variantDimensions: Record<string, ImageDimensions>;
+  variantDimensions: Record<
+    string,
+    ImageDimensions
+  >;
 
   // Gallery support.
   gallery?: PortfolioGalleryImage[];
   coverIndex?: number;
 };
 
-
-type MetadataItem = PortfolioMetadataEntry;
-
-
-const publicDir = path.join(process.cwd(), "public");
-const portfolioDir = path.join(publicDir, "portfolio");
-
-
-const imageExtensions = new Set([
-  ".jpg",
-  ".jpeg",
-  ".png",
-  ".webp",
-  ".gif",
-  ".avif",
-  ".svg",
-]);
-
-
-async function getImageDimensions(
-  filePath: string
-): Promise<ImageDimensions> {
-  const metadata = await sharp(filePath).metadata();
-
-  return {
-    width: metadata.width ?? 1,
-    height: metadata.height ?? 1,
-  };
-}
-
-
-function titleFromFilename(file: string) {
-  return path
-    .basename(file, path.extname(file))
-    .replace(/[-_]+/g, " ")
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
-
 function isCategory(value: string): value is Category {
   return categories.includes(value as Category);
 }
 
-
-function isYearFolder(name: string) {
-  return /^\d{4}$/.test(name);
-}
-
-
-function isArtTypeFolder(
-  name: string
-): name is (typeof artTypeSlugs)[number] {
-  return artTypeSlugs.includes(name as (typeof artTypeSlugs)[number]);
-}
-
-
-function isReviewTypeFolder(
-  name: string
-): name is (typeof reviewTypeSlugs)[number] {
-  return reviewTypeSlugs.includes(name as (typeof reviewTypeSlugs)[number]);
-}
-
-
-async function scanYearFolder(
-  category: Category,
-  year: string,
-  dir: string,
-  srcBase: string,
-  metadata: Map<string, MetadataItem>
-): Promise<PortfolioItem[]> {
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
-
-  const subdirs = entries
-    .filter((entry) => entry.isDirectory())
-    .sort((a, b) => a.name.localeCompare(b.name));
-
-  const files = entries
-    .filter(
-      (entry) =>
-        entry.isFile() &&
-        imageExtensions.has(path.extname(entry.name).toLowerCase())
-    )
-    .map((entry) => entry.name)
-    .sort((a, b) => a.localeCompare(b));
-
-  const out: PortfolioItem[] = [];
-
-  // Folders containing multiple images are treated as variants
-  for (const subdir of subdirs) {
-    const subdirPath = path.join(dir, subdir.name);
-
-    const subFiles = fs
-      .readdirSync(subdirPath, { withFileTypes: true })
-      .filter(
-        (entry) =>
-          entry.isFile() &&
-          imageExtensions.has(
-            path.extname(entry.name).toLowerCase()
-          )
-      )
-      .map((entry) => entry.name)
-      .sort((a, b) => a.localeCompare(b));
-
-    if (subFiles.length === 0) {
-      continue;
-    }
-
-    const variants = subFiles.map(
-      (file) => `${srcBase}/${subdir.name}/${file}`
-    );
-
-    const src = variants[0];
-
-    const meta =
-      metadata.get(src) ??
-      metadata.get(`${srcBase}/${subdir.name}`);
-
-    const metaCategory =
-      meta?.category && isCategory(meta.category)
-        ? meta.category
-        : category;
-
-    const variantDimensions: Record<string, ImageDimensions> = {};
-
-    for (const file of subFiles) {
-      variantDimensions[`${srcBase}/${subdir.name}/${file}`] =
-        await getImageDimensions(path.join(subdirPath, file));
-    }
-
-    out.push({
-      src,
-      category: metaCategory,
-      year: meta?.year ?? year,
-      title: meta?.title ?? titleFromFilename(subdir.name),
-      note: meta?.note ?? "",
-      date: meta?.date,
-      artType: resolveArtType(meta, metaCategory),
-      reviewType: resolveReviewType(meta, metaCategory),
-      variants,
-      width: variantDimensions[src].width,
-      height: variantDimensions[src].height,
-      variantDimensions,
-
-      // Gallery support.
-      gallery: meta?.gallery,
-      coverIndex: meta?.coverIndex,
-    });
-  }
-
-  // Individual image files
-  for (const file of files) {
-    const src = `${srcBase}/${file}`;
-    const filePath = path.join(dir, file);
-
-    const meta = metadata.get(src);
-
-    const metaCategory =
-      meta?.category && isCategory(meta.category)
-        ? meta.category
-        : category;
-
-    const dimensions = await getImageDimensions(filePath);
-
-    out.push({
-      src,
-      category: metaCategory,
-      year: meta?.year ?? year,
-      title: meta?.title ?? titleFromFilename(file),
-      note: meta?.note ?? "",
-      date: meta?.date,
-      artType: resolveArtType(meta, metaCategory),
-      reviewType: resolveReviewType(meta, metaCategory),
-      variants: [src],
-      width: dimensions.width,
-      height: dimensions.height,
-      variantDimensions: {
-        [src]: dimensions,
-      },
-
-      // Gallery support.
-      gallery: meta?.gallery,
-      coverIndex: meta?.coverIndex,
-    });
-  }
-
-  return out;
-}
-
-
-function resolveArtType(meta: MetadataItem | undefined, category: Category): ArtType | undefined {
+function resolveArtType(
+  value: string | null | undefined,
+  category: Category
+): ArtType | undefined {
   if (category !== "arts") {
     return undefined;
   }
 
-  if (meta?.artType && isArtType(meta.artType)) {
-    return meta.artType;
+  if (value && isArtType(value)) {
+    return value;
   }
 
   return defaultArtType;
 }
 
-
-function resolveReviewType(meta: MetadataItem | undefined, category: Category): ReviewType | undefined {
+function resolveReviewType(
+  value: string | null | undefined,
+  category: Category
+): ReviewType | undefined {
   if (category !== "reviews") {
     return undefined;
   }
 
-  if (meta?.reviewType && isReviewType(meta.reviewType)) {
-    return meta.reviewType;
+  if (value && isReviewType(value)) {
+    return value;
   }
 
   return defaultReviewType;
 }
 
+function normalizeDimensions(
+  doc: PortfolioItemDoc
+): ImageDimensions {
+  return {
+    width:
+      typeof doc.width === "number" &&
+      doc.width > 0
+        ? doc.width
+        : 800,
 
-function itemFromRemoteMetadata(meta: MetadataItem): PortfolioItem | null {
-  if (!meta.src || !meta.category || !isCategory(meta.category)) {
+    height:
+      typeof doc.height === "number" &&
+      doc.height > 0
+        ? doc.height
+        : 1000,
+  };
+}
+
+function normalizeGallery(
+  doc: PortfolioItemDoc
+): PortfolioGalleryImage[] | undefined {
+  if (
+    !Array.isArray(doc.gallery) ||
+    doc.gallery.length === 0
+  ) {
+    return undefined;
+  }
+
+  const gallery: PortfolioGalleryImage[] = [];
+
+  for (const image of doc.gallery) {
+    if (
+      !image ||
+      typeof image !== "object" ||
+      typeof image.src !== "string" ||
+      !image.src.trim()
+    ) {
+      continue;
+    }
+
+    gallery.push({
+      src: image.src,
+
+      cloudinaryPublicId:
+        typeof image.cloudinaryPublicId ===
+        "string"
+          ? image.cloudinaryPublicId
+          : undefined,
+
+      width:
+        typeof image.width === "number"
+          ? image.width
+          : undefined,
+
+      height:
+        typeof image.height === "number"
+          ? image.height
+          : undefined,
+    });
+  }
+
+  return gallery.length > 0
+    ? gallery
+    : undefined;
+}
+
+function itemFromMongoDocument(
+  doc: PortfolioItemDoc
+): PortfolioItem | null {
+  if (
+    !doc ||
+    typeof doc.src !== "string" ||
+    !doc.src.trim()
+  ) {
     return null;
   }
 
-  const category = meta.category;
-  const width = meta.width ?? 800;
-  const height = meta.height ?? 1000;
+  if (
+    typeof doc.category !== "string" ||
+    !isCategory(doc.category)
+  ) {
+    return null;
+  }
+
+  const category = doc.category;
+
+  const dimensions =
+    normalizeDimensions(doc);
+
+  /*
+   * Gallery images are the source of variants.
+   * We no longer read doc.variants because
+   * PortfolioItemDoc does not contain that field.
+   */
+  const gallery =
+    normalizeGallery(doc);
+
   const variants =
-    meta.variants && meta.variants.length > 0 ? meta.variants : [meta.src];
+    gallery && gallery.length > 0
+      ? gallery.map((image) => image.src)
+      : [doc.src];
 
-  const variantDimensions: Record<string, ImageDimensions> =
-    meta.variantDimensions ?? {};
+  /*
+   * Make sure the cover image is always
+   * included in variants.
+   */
+  if (!variants.includes(doc.src)) {
+    variants.unshift(doc.src);
+  }
 
-  for (const variantSrc of variants) {
-    if (!variantDimensions[variantSrc]) {
-      variantDimensions[variantSrc] = { width, height };
+  /*
+   * Build dimensions from the gallery.
+   */
+  const variantDimensions: Record<
+    string,
+    ImageDimensions
+  > = {};
+
+  for (const image of gallery ?? []) {
+    if (
+      typeof image.width === "number" &&
+      typeof image.height === "number" &&
+      image.width > 0 &&
+      image.height > 0
+    ) {
+      variantDimensions[image.src] = {
+        width: image.width,
+        height: image.height,
+      };
+    }
+  }
+
+  /*
+   * Make sure every variant has dimensions.
+   */
+  for (const variant of variants) {
+    if (!variantDimensions[variant]) {
+      variantDimensions[variant] =
+        dimensions;
     }
   }
 
   return {
-    src: meta.src,
+    src: doc.src,
+
     category,
-    year: meta.year ?? new Date().getFullYear().toString(),
-    title: meta.title ?? "Untitled",
-    note: meta.note ?? "",
-    date: meta.date,
-    artType: resolveArtType(meta, category),
-    reviewType: resolveReviewType(meta, category),
+
+    year:
+      typeof doc.year === "string" &&
+      doc.year.trim()
+        ? doc.year
+        : new Date()
+            .getFullYear()
+            .toString(),
+
+    title:
+      typeof doc.title === "string" &&
+      doc.title.trim()
+        ? doc.title
+        : "Untitled",
+
+    note:
+      typeof doc.note === "string"
+        ? doc.note
+        : "",
+
+    date:
+      typeof doc.date === "string" &&
+      doc.date.trim()
+        ? doc.date
+        : undefined,
+
+    artType: resolveArtType(
+      doc.artType,
+      category
+    ),
+
+    reviewType: resolveReviewType(
+      doc.reviewType,
+      category
+    ),
+
     variants,
-    width,
-    height,
+
+    width: dimensions.width,
+
+    height: dimensions.height,
+
     variantDimensions,
 
-    // Gallery support.
-    gallery: meta.gallery,
-    coverIndex: meta.coverIndex,
+    gallery,
+
+    coverIndex:
+      typeof doc.coverIndex === "number"
+        ? doc.coverIndex
+        : undefined,
   };
 }
 
+/**
+ * MongoDB is now the source of truth for portfolio data.
+ *
+ * Images themselves live in Cloudinary.
+ * MongoDB stores the Cloudinary URLs and metadata.
+ */
+async function scanPortfolioItems(): Promise<
+  PortfolioItem[]
+> {
+  const { db } =
+    await connectToDatabase();
 
-async function scanPortfolioItems(): Promise<PortfolioItem[]> {
-  const metadataEntries = await readPortfolioMetadata();
-  const metadata = new Map(
-    metadataEntries.filter((item) => item.src).map((item) => [item.src, item])
-  );
+   const collection = db.collection(
+  PORTFOLIO_COLLECTION
+);
+
+  const documents = await collection
+    .find({})
+    .sort({
+      year: -1,
+      date: -1,
+      createdAt: -1,
+    })
+    .toArray();
+
   const items: PortfolioItem[] = [];
 
-  for (const category of categories) {
-    const categoryDir = path.join(portfolioDir, category);
+  for (const document of documents) {
+    const item =
+      itemFromMongoDocument(document);
 
-    if (!fs.existsSync(categoryDir)) {
-      continue;
-    }
-
-    const dirs = fs
-      .readdirSync(categoryDir, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => entry.name)
-      .sort((a, b) => b.localeCompare(a));
-
-    // Arts may use the new nested layout:
-    //   public/portfolio/arts/<artTypeSlug>/<year>/…
-    // so scan each art-type folder separately before the legacy layout.
-    if (category === "arts") {
-      for (const artTypeFolder of dirs) {
-        if (!isArtTypeFolder(artTypeFolder)) continue;
-
-        const artDir = path.join(categoryDir, artTypeFolder);
-
-        const artYears = fs
-          .readdirSync(artDir, { withFileTypes: true })
-          .filter(
-            (entry) => entry.isDirectory() && isYearFolder(entry.name)
-          )
-          .map((entry) => entry.name)
-          .sort((a, b) => b.localeCompare(a));
-
-        for (const year of artYears) {
-          items.push(
-            ...(await scanYearFolder(
-              "arts",
-              year,
-              path.join(artDir, year),
-              `/portfolio/arts/${artTypeFolder}/${year}`,
-              metadata
-            ))
-          );
-        }
-      }
-    }
-
-    // Reviews may use the new nested layout:
-    //   public/portfolio/reviews/<reviewTypeSlug>/<year>/…
-    // so scan each review-type folder separately before the legacy layout.
-    if (category === "reviews") {
-      for (const reviewTypeFolder of dirs) {
-        if (!isReviewTypeFolder(reviewTypeFolder)) continue;
-
-        const reviewDir = path.join(categoryDir, reviewTypeFolder);
-
-        const reviewYears = fs
-          .readdirSync(reviewDir, { withFileTypes: true })
-          .filter(
-            (entry) => entry.isDirectory() && isYearFolder(entry.name)
-          )
-          .map((entry) => entry.name)
-          .sort((a, b) => b.localeCompare(a));
-
-        for (const year of reviewYears) {
-          items.push(
-            ...(await scanYearFolder(
-              "reviews",
-              year,
-              path.join(reviewDir, year),
-              `/portfolio/reviews/${reviewTypeFolder}/${year}`,
-              metadata
-            ))
-          );
-        }
-      }
-    }
-
-    // Legacy layout: public/portfolio/<category>/<year>/…
-    const years = dirs.filter((name) => isYearFolder(name));
-
-    for (const year of years) {
-      const yearDir = path.join(categoryDir, year);
-      const entries = fs.readdirSync(yearDir, { withFileTypes: true });
-
-      const subdirs = entries
-        .filter((entry) => entry.isDirectory())
-        .sort((a, b) => a.name.localeCompare(b.name));
-
-      const files = entries
-        .filter(
-          (entry) =>
-            entry.isFile() &&
-            imageExtensions.has(path.extname(entry.name).toLowerCase())
-        )
-        .map((entry) => entry.name)
-        .sort((a, b) => a.localeCompare(b));
-
-      /*
-       * Folders containing multiple images are treated as variants
-       */
-      if (subdirs.length > 0) {
-        for (const subdir of subdirs) {
-          const subdirPath = path.join(yearDir, subdir.name);
-
-          const subFiles = fs
-            .readdirSync(subdirPath, { withFileTypes: true })
-            .filter(
-              (entry) =>
-                entry.isFile() &&
-                imageExtensions.has(
-                  path.extname(entry.name).toLowerCase()
-                )
-            )
-            .map((entry) => entry.name)
-            .sort((a, b) => a.localeCompare(b));
-
-          if (subFiles.length === 0) {
-            continue;
-          }
-
-          const variants = subFiles.map(
-            (file) =>
-              `/portfolio/${category}/${year}/${subdir.name}/${file}`
-          );
-
-          const src = variants[0];
-
-          const meta =
-            metadata.get(src) ??
-            metadata.get(
-              `/portfolio/${category}/${year}/${subdir.name}`
-            );
-
-          const metaCategory =
-            meta?.category && isCategory(meta.category)
-              ? meta.category
-              : category;
-
-          const variantDimensions: Record<
-            string,
-            ImageDimensions
-          > = {};
-
-          for (const file of subFiles) {
-            const filePath = path.join(subdirPath, file);
-
-            variantDimensions[
-              `/portfolio/${category}/${year}/${subdir.name}/${file}`
-            ] = await getImageDimensions(filePath);
-          }
-
-          const dimensions = variantDimensions[src];
-
-          items.push({
-            src,
-            category: metaCategory,
-            year: meta?.year ?? year,
-            title: meta?.title ?? titleFromFilename(subdir.name),
-            note: meta?.note ?? "",
-            date: meta?.date,
-            artType: resolveArtType(meta, metaCategory),
-            reviewType: resolveReviewType(meta, metaCategory),
-            variants,
-            width: dimensions.width,
-            height: dimensions.height,
-            variantDimensions,
-
-            // Gallery support.
-            gallery: meta?.gallery,
-            coverIndex: meta?.coverIndex,
-          });
-        }
-      }
-
-      /*
-       * Individual image files
-       */
-      if (files.length > 0) {
-        for (const file of files) {
-          const src = `/portfolio/${category}/${year}/${file}`;
-          const filePath = path.join(yearDir, file);
-
-          const meta = metadata.get(src);
-
-          const metaCategory =
-            meta?.category && isCategory(meta.category)
-              ? meta.category
-              : category;
-
-          const dimensions = await getImageDimensions(filePath);
-
-          items.push({
-            src,
-            category: metaCategory,
-            year: meta?.year ?? year,
-            title: meta?.title ?? titleFromFilename(file),
-            note: meta?.note ?? "",
-            date: meta?.date,
-            artType: resolveArtType(meta, metaCategory),
-            reviewType: resolveReviewType(meta, metaCategory),
-            variants: [src],
-            width: dimensions.width,
-            height: dimensions.height,
-            variantDimensions: {
-              [src]: dimensions,
-            },
-
-            // Gallery support.
-            gallery: meta?.gallery,
-            coverIndex: meta?.coverIndex,
-          });
-        }
-      }
-    }
-  }
-
-  const seen = new Set(items.map((item) => item.src));
-  for (const entry of metadataEntries) {
-    if (!entry.src || !isRemotePortfolioSrc(entry.src) || seen.has(entry.src)) {
-      continue;
-    }
-    const remoteItem = itemFromRemoteMetadata(entry);
-    if (remoteItem) {
-      items.push(remoteItem);
-      seen.add(remoteItem.src);
+    if (item) {
+      items.push(item);
     }
   }
 
   return items.sort((a, b) => {
-    const yearSort = b.year.localeCompare(a.year);
+    const yearSort =
+      b.year.localeCompare(a.year);
 
     if (yearSort !== 0) {
       return yearSort;
     }
 
-    return (b.date ?? "").localeCompare(a.date ?? "");
+    return (
+      (b.date ?? "").localeCompare(
+        a.date ?? ""
+      )
+    );
   });
 }
 
+/**
+ * Cache portfolio results for 5 minutes.
+ *
+ * Upload/edit/delete APIs should call:
+ *
+ * revalidateTag("portfolio")
+ *
+ * after changing portfolio data.
+ */
+const getCachedPortfolioItems =
+  unstable_cache(
+    scanPortfolioItems,
+    ["portfolio-items"],
+    {
+      revalidate: 300,
+      tags: ["portfolio"],
+    }
+  );
 
-const getCachedPortfolioItems = unstable_cache(
-  scanPortfolioItems,
-  ["portfolio-items"],
-  { revalidate: 300, tags: ["portfolio"] }
+export const getPortfolioItems = cache(
+  async () =>
+    getCachedPortfolioItems()
 );
-
-
-export const getPortfolioItems = cache(async () => getCachedPortfolioItems());
-
 
 export async function getItemsByCategory(
   category: Category
 ): Promise<PortfolioItem[]> {
-  const items = await getPortfolioItems();
+  const items =
+    await getPortfolioItems();
 
-  return items.filter((item) => item.category === category);
+  return items.filter(
+    (item) =>
+      item.category === category
+  );
 }
-
 
 export async function getItemsGroupedByCategory() {
   const grouped = await Promise.all(
     categories.map(async (category) => {
-      const items = await getItemsByCategory(category);
+      const items =
+        await getItemsByCategory(
+          category
+        );
 
       return [category, items] as const;
     })
   );
 
-  return Object.fromEntries(grouped) as Record<
+  return Object.fromEntries(
+    grouped
+  ) as Record<
     Category,
     PortfolioItem[]
   >;
 }
 
-
+/**
+ * The logo is still stored locally in /public/assets.
+ * This is unrelated to portfolio images.
+ */
 export function getLogoSrc() {
-  const logoPng = path.join(publicDir, "assets", "logo.png");
-  const logoSvg = path.join(publicDir, "assets", "logo.svg");
+  const publicDir = path.join(
+    process.cwd(),
+    "public"
+  );
+
+  const logoPng = path.join(
+    publicDir,
+    "assets",
+    "logo.png"
+  );
+
+  const logoSvg = path.join(
+    publicDir,
+    "assets",
+    "logo.svg"
+  );
 
   if (fs.existsSync(logoPng)) {
     return "/assets/logo.png";

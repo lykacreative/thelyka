@@ -1,6 +1,4 @@
 import { NextResponse } from "next/server";
-import fs from "node:fs/promises";
-import path from "node:path";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
 import {
   isCloudinaryConfigured,
@@ -8,27 +6,14 @@ import {
   uploadCloudinaryRaw,
   deleteCloudinaryRaw,
 } from "@/lib/cloudinary";
+import {
+  addBlogMetadata,
+  readBlogMetadata,
+  removeBlogMetadata,
+  type BlogMetadata,
+} from "@/lib/blog-metadata";
 
 export const runtime = "nodejs";
-
-const blogsDir = path.join(process.cwd(), "public", "blogs");
-
-const imageExtensions = new Set([
-  ".jpg",
-  ".jpeg",
-  ".png",
-  ".webp",
-  ".gif",
-  ".avif",
-  ".svg",
-]);
-
-function useCloudinary() {
-  return (
-    process.env.NODE_ENV === "production" &&
-    isCloudinaryConfigured()
-  );
-}
 
 function sanitizeSlug(value: string) {
   return value
@@ -65,67 +50,10 @@ function buildFrontmatter(data: {
   return lines.join("\n");
 }
 
-function parseFrontmatter(raw: string) {
-  const match = raw.match(
-    /^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/
-  );
-
-  if (!match) {
-    return {
-      title: "",
-      date: "",
-      excerpt: "",
-      cover: "",
-      content: raw.trim(),
-    };
-  }
-
-  const meta: Record<string, string> = {};
-
-  for (const line of match[1].split("\n")) {
-    const colon = line.indexOf(":");
-
-    if (colon === -1) {
-      continue;
-    }
-
-    let value = line.slice(colon + 1).trim();
-
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
-    }
-
-    meta[line.slice(0, colon).trim()] = value;
-  }
-
-  return {
-    title: meta.title ?? "",
-    date: meta.date ?? "",
-    excerpt: meta.excerpt ?? "",
-    cover: meta.cover ?? "",
-    content: match[2].trim(),
-  };
-}
-
-async function listImageFiles(dir: string): Promise<string[]> {
-  try {
-    const files = await fs.readdir(dir);
-
-    return files
-      .filter((file) => {
-        const ext = path.extname(file).toLowerCase();
-        return imageExtensions.has(ext);
-      })
-      .sort();
-  } catch {
-    return [];
-  }
-}
-
-function cloudinaryBlogPublicId(year: string, slug: string) {
+function cloudinaryBlogPublicId(
+  year: string,
+  slug: string
+) {
   return `thelyka/blogs/${year}/${slug}/index`;
 }
 
@@ -140,6 +68,10 @@ type BlogPost = {
   images: string[];
 };
 
+function isValidYear(year: string) {
+  return /^\d{4}$/.test(year);
+}
+
 export async function GET() {
   if (!(await isAdminAuthenticated())) {
     return NextResponse.json(
@@ -148,109 +80,90 @@ export async function GET() {
     );
   }
 
-  const result: BlogPost[] = [];
+  if (!isCloudinaryConfigured()) {
+    return NextResponse.json(
+      { error: "Cloudinary is not configured." },
+      { status: 500 }
+    );
+  }
 
-  /*
-   * Production:
-   * Read blog Markdown files from Cloudinary.
-   */
-  if (useCloudinary()) {
-    try {
-      const blogsRoot = "thelyka/blogs";
+  try {
+    const metadata = await readBlogMetadata();
 
-      const cloudinaryUrl = `https://res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME}/raw/upload/${blogsRoot}`;
+    const posts: BlogPost[] = [];
+
+    for (const post of metadata) {
+      if (
+        !post.slug ||
+        !post.year ||
+        !isValidYear(post.year)
+      ) {
+        continue;
+      }
+
+      const publicId = cloudinaryBlogPublicId(
+        post.year,
+        post.slug
+      );
+
+      const content = await readCloudinaryRaw(
+        publicId
+      );
+
+      if (!content) {
+        console.warn(
+          `Blog Markdown not found in Cloudinary: ${publicId}`
+        );
+        continue;
+      }
 
       /*
-       * Cloudinary does not provide a simple directory listing
-       * through the URL above, so blog discovery in production
-       * should come from a manifest.
+       * Blog images are already stored as
+       * Cloudinary URLs inside the Markdown.
        *
-       * For now, return an empty list rather than attempting
-       * filesystem access on Vercel.
+       * We don't need to scan a local directory.
        */
-      console.warn(
-        "Cloudinary blog storage is enabled, but production blog discovery requires a manifest."
+      const imageMatches =
+        content.match(
+          /https?:\/\/res\.cloudinary\.com\/[^\s)"']+/g
+        ) ?? [];
+
+      const images = Array.from(
+        new Set(imageMatches)
       );
 
-      return NextResponse.json({ posts: result });
-    } catch (error) {
-      console.error("Failed to read Cloudinary blogs:", error);
-
-      return NextResponse.json(
-        {
-          error: "Failed to load blogs.",
-        },
-        { status: 500 }
-      );
+      posts.push({
+        slug: post.slug,
+        year: post.year,
+        title: post.title,
+        date: post.date,
+        excerpt: post.excerpt,
+        cover: post.cover,
+        content,
+        images,
+      });
     }
-  }
 
-  /*
-   * Local development:
-   * Continue reading Markdown files from public/blogs.
-   */
-  try {
-    const years = await fs.readdir(blogsDir);
-
-    for (const year of years) {
-      if (!/^\d{4}$/.test(year)) {
-        continue;
-      }
-
-      const yearPath = path.join(blogsDir, year);
-      const stat = await fs.stat(yearPath);
-
-      if (!stat.isDirectory()) {
-        continue;
-      }
-
-      const slugs = await fs.readdir(yearPath);
-
-      for (const slug of slugs) {
-        const postDir = path.join(yearPath, slug);
-        const mdPath = path.join(postDir, "index.md");
-
-        try {
-          await fs.access(mdPath);
-
-          const raw = await fs.readFile(mdPath, "utf8");
-
-          const {
-            title,
-            date,
-            excerpt,
-            cover,
-            content,
-          } = parseFrontmatter(raw);
-
-          const images = (await listImageFiles(postDir)).map(
-            (file) => `/blogs/${year}/${slug}/${file}`
-          );
-
-          result.push({
-            slug,
-            year,
-            title: title || slug,
-            date: date || year,
-            excerpt,
-            cover,
-            content,
-            images,
-          });
-        } catch {
-          // No index.md, skip this directory.
-        }
-      }
-    }
-  } catch {
-    // blogsDir does not exist.
-  }
-
-  return NextResponse.json({
-    posts: result.sort((a, b) =>
+    posts.sort((a, b) =>
       b.date.localeCompare(a.date)
-    ),
-  });
+    );
+
+    return NextResponse.json({
+      posts,
+    });
+  } catch (error) {
+    console.error(
+      "Failed to read Cloudinary blogs:",
+      error
+    );
+
+    return NextResponse.json(
+      {
+        error: "Failed to load blogs.",
+      },
+      { status: 500 }
+    );
+  }
 }
 
 type SaveBody = {
@@ -268,6 +181,13 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: "Not authenticated." },
       { status: 401 }
+    );
+  }
+
+  if (!isCloudinaryConfigured()) {
+    return NextResponse.json(
+      { error: "Cloudinary is not configured." },
+      { status: 500 }
     );
   }
 
@@ -306,88 +226,82 @@ export async function POST(request: Request) {
   }
 
   const year =
-    body.year && /^\d{4}$/.test(body.year.trim())
+    body.year &&
+    isValidYear(body.year.trim())
       ? body.year.trim()
-      : new Date().getFullYear().toString();
+      : new Date()
+          .getFullYear()
+          .toString();
 
   const date =
     body.date?.trim() ||
-    new Date().toISOString().slice(0, 10);
+    new Date()
+      .toISOString()
+      .slice(0, 10);
 
-  const frontmatter = buildFrontmatter({
-    title: sanitizeTitle(body.title),
-    date,
-    excerpt: body.excerpt?.trim() || "",
-    cover: body.cover?.trim() || undefined,
-  });
+  const title = sanitizeTitle(
+    body.title
+  );
+
+  const excerpt =
+    body.excerpt?.trim() || "";
+
+  const cover =
+    body.cover?.trim() || "";
+
+  const frontmatter =
+    buildFrontmatter({
+      title,
+      date,
+      excerpt,
+      cover: cover || undefined,
+    });
 
   const file = `${frontmatter}\n\n${body.content.trim()}\n`;
 
-  /*
-   * Production:
-   * Store Markdown file in Cloudinary.
-   */
-  if (useCloudinary()) {
-    try {
-      const publicId = cloudinaryBlogPublicId(year, slug);
+  try {
+    const publicId =
+      cloudinaryBlogPublicId(
+        year,
+        slug
+      );
 
-      const secureUrl = await uploadCloudinaryRaw(
+    const secureUrl =
+      await uploadCloudinaryRaw(
         file,
         publicId
       );
 
-      return NextResponse.json({
-        ok: true,
-        slug,
-        year,
-        storage: "cloudinary",
-        url: secureUrl,
-      });
-    } catch (error) {
-      console.error("Cloudinary blog save failed:", error);
-
-      return NextResponse.json(
-        {
-          error: "Failed to save blog post.",
-        },
-        { status: 500 }
-      );
-    }
-  }
-
-  /*
-   * Local development:
-   * Store Markdown file on disk.
-   */
-  try {
-    const postDir = path.join(
-      blogsDir,
+    const metadata: BlogMetadata = {
+      slug,
       year,
-      slug
-    );
+      title,
+      date,
+      excerpt,
+      cover,
+    };
 
-    await fs.mkdir(postDir, {
-      recursive: true,
-    });
-
-    await fs.writeFile(
-      path.join(postDir, "index.md"),
-      file,
-      "utf8"
+    await addBlogMetadata(
+      metadata
     );
 
     return NextResponse.json({
       ok: true,
       slug,
       year,
-      storage: "local",
+      storage: "cloudinary",
+      url: secureUrl,
     });
   } catch (error) {
-    console.error("Local blog save failed:", error);
+    console.error(
+      "Cloudinary blog save failed:",
+      error
+    );
 
     return NextResponse.json(
       {
-        error: "Failed to save blog post.",
+        error:
+          "Failed to save blog post.",
       },
       { status: 500 }
     );
@@ -399,11 +313,20 @@ type DeleteBody = {
   year: string;
 };
 
-export async function DELETE(request: Request) {
+export async function DELETE(
+  request: Request
+) {
   if (!(await isAdminAuthenticated())) {
     return NextResponse.json(
       { error: "Not authenticated." },
       { status: 401 }
+    );
+  }
+
+  if (!isCloudinaryConfigured()) {
+    return NextResponse.json(
+      { error: "Cloudinary is not configured." },
+      { status: 500 }
     );
   }
 
@@ -428,83 +351,45 @@ export async function DELETE(request: Request) {
   }
 
   const year =
-    body.year && /^\d{4}$/.test(body.year.trim())
+    body.year &&
+    isValidYear(body.year.trim())
       ? body.year.trim()
-      : new Date().getFullYear().toString();
+      : new Date()
+          .getFullYear()
+          .toString();
 
-  /*
-   * Production:
-   * Delete Markdown file from Cloudinary.
-   */
-  if (useCloudinary()) {
-    try {
-      const publicId = cloudinaryBlogPublicId(
+  try {
+    const publicId =
+      cloudinaryBlogPublicId(
         year,
         slug
       );
 
-      await deleteCloudinaryRaw(publicId);
-
-      return NextResponse.json({
-        ok: true,
-        slug,
-        year,
-        storage: "cloudinary",
-      });
-    } catch (error) {
-      console.error(
-        "Cloudinary blog delete failed:",
-        error
-      );
-
-      return NextResponse.json(
-        {
-          error: "Failed to delete blog post.",
-        },
-        { status: 500 }
-      );
-    }
-  }
-
-  /*
-   * Local development:
-   * Delete the blog directory from disk.
-   */
-  const postDir = path.join(
-    blogsDir,
-    year,
-    slug
-  );
-
-  try {
-    await fs.access(
-      path.join(postDir, "index.md")
+    await deleteCloudinaryRaw(
+      publicId
     );
-  } catch {
-    return NextResponse.json(
-      { error: "Blog post not found." },
-      { status: 404 }
-    );
-  }
 
-  try {
-    await fs.rm(postDir, {
-      recursive: true,
-      force: true,
-    });
+    await removeBlogMetadata(
+      slug,
+      year
+    );
 
     return NextResponse.json({
       ok: true,
       slug,
       year,
-      storage: "local",
+      storage: "cloudinary",
     });
   } catch (error) {
-    console.error("Local blog delete failed:", error);
+    console.error(
+      "Cloudinary blog delete failed:",
+      error
+    );
 
     return NextResponse.json(
       {
-        error: "Failed to delete blog post.",
+        error:
+          "Failed to delete blog post.",
       },
       { status: 500 }
     );
