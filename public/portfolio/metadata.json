@@ -127,7 +127,7 @@
     "src": "/portfolio/design/2027/BW.png",
     "category": "design",
     "year": "2027",
-    "title": "BMW",
+    "title": "BWM",
     "note": "",
     "artType": "Digital Art",
     "reviewType": "Movies"
@@ -163,5 +163,24 @@
     ],
     "coverIndex": 2,
     "artType": "Sketches"
+  },
+  {
+    "src": "https://res.cloudinary.com/dgow1oztd/image/upload/v1788795445/thelyka/portfolio/design/2026/1788795444111-0-nn.png",
+    "cloudinaryPublicId": "thelyka/portfolio/design/2026/1788795444111-0-nn",
+    "category": "design",
+    "year": "2026",
+    "title": "nn",
+    "note": "",
+    "width": 1366,
+    "height": 768,
+    "gallery": [
+      {
+        "src": "https://res.cloudinary.com/dgow1oztd/image/upload/v1788795445/thelyka/portfolio/design/2026/1788795444111-0-nn.png",
+        "cloudinaryPublicId": "thelyka/portfolio/design/2026/1788795444111-0-nn",
+        "width": 1366,
+        "height": 768
+      }
+    ],
+    "coverIndex": 0
   }
 ]

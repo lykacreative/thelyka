@@ -38,7 +38,7 @@ export function Lightbox({ item, onClose }: LightboxProps) {
     };
   }, [item, onClose]);
 
-  // Existing variants logic (untouched)
+  // Existing variants logic
   const currentSrc = item?.variants[variantIndex] ?? item?.src;
 
   // Gallery takes priority when present
@@ -89,7 +89,7 @@ export function Lightbox({ item, onClose }: LightboxProps) {
               overflow-y-auto
               lg:w-fit
               lg:max-h-[80vh]
-              lg:overflow-hidden
+              lg:overflow-visible
               lg:pr-80
             "
             initial={{ y: 20, scale: 0.98, opacity: 0 }}
@@ -98,13 +98,18 @@ export function Lightbox({ item, onClose }: LightboxProps) {
             transition={{ type: 'spring', stiffness: 260, damping: 28 }}
             onMouseDown={(e) => e.stopPropagation()}
           >
-            {/* IMAGE + CLOSE BUTTON + GALLERY THUMBNAILS */}
+            {/* IMAGE + THUMBNAILS */}
             {currentDimensions && (
               <div
                 onContextMenu={(event) => event.preventDefault()}
-                className="group relative w-full shrink-0 md:w-auto"
+                className="
+                  group relative
+                  flex w-full shrink-0 flex-col
+                  items-center
+                  md:w-auto
+                "
               >
-                {/* CLOSE BUTTON – top-left corner of the image */}
+                {/* CLOSE BUTTON */}
                 <button
                   type="button"
                   onClick={onClose}
@@ -116,7 +121,9 @@ export function Lightbox({ item, onClose }: LightboxProps) {
                     bg-[var(--modal-bg)] text-[var(--modal-fg)]
                     shadow-md transition-all duration-200
                     hover:bg-[var(--modal-fg)] hover:text-[var(--modal-bg)]
-                    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]
+                    focus-visible:outline-none
+                    focus-visible:ring-2
+                    focus-visible:ring-[var(--frame)]
                     md:left-4 md:top-4
                     opacity-0 group-hover:opacity-100
                   "
@@ -124,6 +131,7 @@ export function Lightbox({ item, onClose }: LightboxProps) {
                   <FaXmark className="h-5 w-5" />
                 </button>
 
+                {/* MAIN IMAGE */}
                 <Image
                   src={gallerySrc!}
                   alt={`${item.title} by lyka mimics`}
@@ -131,32 +139,57 @@ export function Lightbox({ item, onClose }: LightboxProps) {
                   height={currentDimensions.height}
                   sizes="(max-width: 1024px) 90vw, 80vh"
                   className="
-                    block h-auto w-full max-w-full object-contain
-                    lg:max-h-[80vh] lg:w-auto
+                    block
+                    h-auto
+                    max-w-full
+                    object-contain
+                    lg:max-h-[80vh]
+                    lg:w-auto
                   "
                   priority
                 />
 
-                {/* Gallery thumbnail strip */}
+                {/* THUMBNAILS – same position, only bg transparent */}
                 {item.gallery && item.gallery.length > 1 ? (
-                  <div className="absolute bottom-3 left-1/2 z-40 flex max-w-[90%] -translate-x-1/2 gap-2 overflow-x-auto rounded-md border border-[var(--frame)] bg-[var(--modal-bg)]/90 p-2 shadow-md backdrop-blur-sm">
+                  <div
+                    className="
+                      flex
+                      w-full
+                      flex-wrap
+                      items-center
+                      justify-center
+                      gap-1
+                      bg-transparent
+                      px-2
+                      py-2
+                    "
+                  >
                     {item.gallery.map((image, index) => (
                       <button
                         key={`${image.src}-${index}`}
                         type="button"
                         onClick={() => setGalleryIndex(index)}
                         aria-label={`View gallery image ${index + 1}`}
-                        className={`relative h-14 w-14 shrink-0 overflow-hidden border-2 transition ${
-                          galleryIndex === index
-                            ? 'border-[var(--modal-fg)]'
-                            : 'border-transparent opacity-70 hover:opacity-100'
-                        }`}
+                        className={`
+                          relative
+                          h-8
+                          w-8
+                          shrink-0
+                          overflow-hidden
+                          border
+                          transition
+                          ${
+                            galleryIndex === index
+                              ? 'border-[var(--modal-fg)]'
+                              : 'border-transparent opacity-70 hover:opacity-100'
+                          }
+                        `}
                       >
                         <Image
                           src={image.src}
                           alt={`${item.title} thumbnail ${index + 1}`}
                           fill
-                          sizes="56px"
+                          sizes="32px"
                           className="object-cover"
                         />
                       </button>
@@ -169,8 +202,9 @@ export function Lightbox({ item, onClose }: LightboxProps) {
             {/* DESCRIPTION */}
             <div
               className="
-                flex w-full flex-col bg-[var(--modal-bg)]
-                lg:absolute lg:top-0 lg:right-0
+                flex w-full flex-col
+                bg-[var(--modal-bg)]
+                lg:absolute lg:right-0 lg:top-0
                 lg:h-full lg:w-80
                 lg:overflow-y-auto
                 lg:border-l lg:border-[var(--frame)]
@@ -180,27 +214,90 @@ export function Lightbox({ item, onClose }: LightboxProps) {
                 <p className="font-sans text-xs font-medium uppercase tracking-normal text-[var(--modal-fg)]">
                   {categoryLabels[item.category]}
                 </p>
-                <h2 className="mt-4 break-words font-display text-[28px] font-semibold leading-[1.1] tracking-normal text-[var(--modal-fg)] sm:text-[44px]">
+
+                <h2
+                  className="
+                    mt-4
+                    break-words
+                    font-display
+                    text-[28px]
+                    font-semibold
+                    leading-[1.1]
+                    tracking-normal
+                    text-[var(--modal-fg)]
+                    sm:text-[44px]
+                  "
+                >
                   {item.title}
                 </h2>
               </div>
 
-              <dl className="grid content-start border-y border-[var(--frame)] font-sans text-sm">
-                <div className="grid grid-cols-[5.5rem_1fr] border-b border-[var(--frame)]">
-                  <dt className="p-3 uppercase tracking-normal text-[var(--modal-fg)] sm:p-4">
+              <dl
+                className="
+                  grid
+                  content-start
+                  border-y
+                  border-[var(--frame)]
+                  font-sans
+                  text-sm
+                "
+              >
+                <div
+                  className="
+                    grid
+                    grid-cols-[5.5rem_1fr]
+                    border-b
+                    border-[var(--frame)]
+                  "
+                >
+                  <dt
+                    className="
+                      p-3
+                      uppercase
+                      tracking-normal
+                      text-[var(--modal-fg)]
+                      sm:p-4
+                    "
+                  >
                     year
                   </dt>
-                  <dd className="border-l border-[var(--frame)] p-3 text-[var(--modal-fg)] sm:p-4">
+
+                  <dd
+                    className="
+                      border-l
+                      border-[var(--frame)]
+                      p-3
+                      text-[var(--modal-fg)]
+                      sm:p-4
+                    "
+                  >
                     {item.year}
                   </dd>
                 </div>
 
                 {item.date ? (
                   <div className="grid grid-cols-[5.5rem_1fr]">
-                    <dt className="p-3 uppercase tracking-normal text-[var(--modal-fg)] sm:p-4">
+                    <dt
+                      className="
+                        p-3
+                        uppercase
+                        tracking-normal
+                        text-[var(--modal-fg)]
+                        sm:p-4
+                      "
+                    >
                       date
                     </dt>
-                    <dd className="border-l border-[var(--frame)] p-3 text-[var(--modal-fg)] sm:p-4">
+
+                    <dd
+                      className="
+                        border-l
+                        border-[var(--frame)]
+                        p-3
+                        text-[var(--modal-fg)]
+                        sm:p-4
+                      "
+                    >
                       {item.date}
                     </dd>
                   </div>
@@ -208,10 +305,28 @@ export function Lightbox({ item, onClose }: LightboxProps) {
               </dl>
 
               <div className="grow p-6">
-                <p className="font-sans text-xs font-medium uppercase tracking-normal text-[var(--modal-fg)]">
+                <p
+                  className="
+                    font-sans
+                    text-xs
+                    font-medium
+                    uppercase
+                    tracking-normal
+                    text-[var(--modal-fg)]
+                  "
+                >
                   artist note
                 </p>
-                <p className="mt-4 font-sans text-sm leading-6 text-[var(--modal-fg)]">
+
+                <p
+                  className="
+                    mt-4
+                    font-sans
+                    text-sm
+                    leading-6
+                    text-[var(--modal-fg)]
+                  "
+                >
                   {item.note || 'No note yet.'}
                 </p>
               </div>
