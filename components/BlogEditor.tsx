@@ -71,6 +71,19 @@ function todayYear() {
   return new Date().getFullYear().toString();
 }
 
+/*
+ * Strip a leading YAML frontmatter block (--- … ---) from content.
+ *
+ * The server always prepends its own frontmatter when saving, so any
+ * frontmatter the user typed manually in the textarea would be
+ * duplicated — and the duplicate `---` lines render as a visible
+ * horizontal rule at the top of the post.
+ */
+function stripFrontmatter(content: string): string {
+  const match = content.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n?([\s\S]*)$/);
+  return match ? match[1].trim() : content.trim();
+}
+
 function resolveCoverField(
   value: string,
   year: string,
@@ -224,7 +237,7 @@ export function BlogEditor({
       slug: post.slug,
       date: post.date,
       excerpt: post.excerpt,
-      content: post.content,
+      content: stripFrontmatter(post.content),
       year: post.year,
       cover: post.cover,
     });
@@ -685,7 +698,9 @@ Write your text here. **Markdown** is supported.
             date: form.date.trim(),
             excerpt:
               form.excerpt.trim(),
-            content: form.content,
+            content: stripFrontmatter(
+              form.content
+            ),
             year:
               form.year.trim() ||
               todayYear(),
@@ -1357,7 +1372,9 @@ Click "Insert 50/50 split" above to drop one in automatically.`}
                   <div className="lyka-prose">
                     <BlogRenderer
                       content={
-                        form.content
+                        stripFrontmatter(
+                          form.content
+                        )
                       }
                     />
                   </div>

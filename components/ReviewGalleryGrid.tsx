@@ -124,7 +124,7 @@ export function ReviewGalleryGrid({ items, reviewType }: ReviewGalleryGridProps)
           </Link>
 
           {/* Category tabs */}
-          <div className="flex flex-wrap items-center justify-center gap-2 pl-10 sm:pl-12">
+          <div className="flex flex-wrap items-center justify-center gap-2">
             <button
               onClick={goToAll}
               className={`
@@ -163,33 +163,31 @@ export function ReviewGalleryGrid({ items, reviewType }: ReviewGalleryGridProps)
 
         {/* Year selector */}
         <header className="text-center">
-          {years.length > 1 ? (
-            <div className="mb-5 flex items-center justify-center gap-3">
-              <button
-                type="button"
-                onClick={previousYear}
-                disabled={years.length === 0 || (selectedYear !== null && currentYearIndex === years.length - 1)}
-                className="grid h-10 w-10 place-items-center border border-[var(--frame)] transition hover:bg-[var(--panel-bg)] hover:text-[var(--panel-fg)] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
-                aria-label="Previous year"
-              >
-                <FaChevronLeft className="h-4 w-4" />
-              </button>
+          <div className="mb-5 flex items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={previousYear}
+              disabled={years.length === 0 || (selectedYear !== null && currentYearIndex === years.length - 1)}
+              className="grid h-10 w-10 place-items-center border border-[var(--frame)] transition hover:bg-[var(--panel-bg)] hover:text-[var(--panel-fg)] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
+              aria-label="Previous year"
+            >
+              <FaChevronLeft className="h-4 w-4" />
+            </button>
 
-              <div className="min-w-[88px] border border-[var(--frame)] bg-[var(--panel-bg)] px-5 py-1 font-display text-xl font-normal tracking-normal text-[var(--panel-fg)]">
-                {selectedYear ?? '—'}
-              </div>
-
-              <button
-                type="button"
-                onClick={nextYear}
-                disabled={years.length === 0 || (selectedYear !== null && currentYearIndex === 0)}
-                className="grid h-10 w-10 place-items-center border border-[var(--frame)] transition hover:bg-[var(--panel-bg)] hover:text-[var(--panel-fg)] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
-                aria-label="Next year"
-              >
-                <FaChevronRight className="h-4 w-4" />
-              </button>
+            <div className="min-w-[88px] border border-[var(--frame)] bg-[var(--panel-bg)] px-5 py-1 font-display text-xl font-normal tracking-normal text-[var(--panel-fg)]">
+              {selectedYear ?? '—'}
             </div>
-          ) : null}
+
+            <button
+              type="button"
+              onClick={nextYear}
+              disabled={years.length === 0 || (selectedYear !== null && currentYearIndex === 0)}
+              className="grid h-10 w-10 place-items-center border border-[var(--frame)] transition hover:bg-[var(--panel-bg)] hover:text-[var(--panel-fg)] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
+              aria-label="Next year"
+            >
+              <FaChevronRight className="h-4 w-4" />
+            </button>
+          </div>
         </header>
 
         {/* Gallery grid */}
