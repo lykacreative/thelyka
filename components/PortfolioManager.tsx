@@ -1972,6 +1972,201 @@ export function PortfolioManager({
                       </p>
                     </div>
 
+                    {/* ── Metadata fields ── */}
+                    <div className="mb-4 grid gap-3 sm:grid-cols-2">
+                      <label className="block">
+                        <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">
+                          Title
+                        </span>
+
+                        <input
+                          type="text"
+                          value={draft.title}
+                          onChange={(e) =>
+                            setDraft({
+                              ...draft,
+                              title: e.target.value,
+                            })
+                          }
+                          className="w-full border border-[var(--frame)] bg-[var(--page-bg-solid)] px-2 py-1 font-display text-sm tracking-normal text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
+                        />
+                      </label>
+
+                      <label className="block">
+                        <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">
+                          Category
+                        </span>
+
+                        <select
+                          value={draft.category}
+                          onChange={(e) => {
+                            const next =
+                              e.target
+                                .value as Category;
+
+                            setDraft({
+                              ...draft,
+                              category: next,
+                              artType:
+                                defaultArtType,
+                              reviewType:
+                                defaultReviewType,
+                            });
+                          }}
+                          className="w-full border border-[var(--frame)] bg-[var(--page-bg-solid)] px-2 py-1 font-display text-sm tracking-normal text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
+                        >
+                          {categories.map(
+                            (value) => (
+                              <option
+                                key={value}
+                                value={value}
+                              >
+                                {
+                                  categoryLabels[
+                                    value
+                                  ]
+                                }
+                              </option>
+                            )
+                          )}
+                        </select>
+                      </label>
+
+                      <label className="block">
+                        <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">
+                          Year
+                        </span>
+
+                        <select
+                          value={draft.year}
+                          onChange={(e) =>
+                            setDraft({
+                              ...draft,
+                              year: e.target.value,
+                            })
+                          }
+                          className="w-full border border-[var(--frame)] bg-[var(--page-bg-solid)] px-2 py-1 font-display text-sm tracking-normal text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
+                        >
+                          {yearOptions.map(
+                            (value) => (
+                              <option
+                                key={value}
+                                value={value}
+                              >
+                                {value}
+                              </option>
+                            )
+                          )}
+                        </select>
+                      </label>
+
+                      <label className="block">
+                        <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">
+                          Date (optional)
+                        </span>
+
+                        <input
+                          type="date"
+                          value={draft.date}
+                          onChange={(e) =>
+                            setDraft({
+                              ...draft,
+                              date: e.target.value,
+                            })
+                          }
+                          className="w-full border border-[var(--frame)] bg-[var(--page-bg-solid)] px-2 py-1 font-display text-sm tracking-normal text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
+                        />
+                      </label>
+
+                      {draft.category ===
+                      "arts" ? (
+                        <label className="block">
+                          <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">
+                            Art type
+                          </span>
+
+                          <select
+                            value={
+                              draft.artType
+                            }
+                            onChange={(e) =>
+                              setDraft({
+                                ...draft,
+                                artType:
+                                  e.target
+                                    .value as ArtType,
+                              })
+                            }
+                            className="w-full border border-[var(--frame)] bg-[var(--page-bg-solid)] px-2 py-1 font-display text-sm tracking-normal text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
+                          >
+                            {artTypes.map(
+                              (value) => (
+                                <option
+                                  key={value}
+                                  value={value}
+                                >
+                                  {value}
+                                </option>
+                              )
+                            )}
+                          </select>
+                        </label>
+                      ) : null}
+
+                      {draft.category ===
+                      "reviews" ? (
+                        <label className="block">
+                          <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">
+                            Review type
+                          </span>
+
+                          <select
+                            value={
+                              draft.reviewType
+                            }
+                            onChange={(e) =>
+                              setDraft({
+                                ...draft,
+                                reviewType:
+                                  e.target
+                                    .value as ReviewType,
+                              })
+                            }
+                            className="w-full border border-[var(--frame)] bg-[var(--page-bg-solid)] px-2 py-1 font-display text-sm tracking-normal text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
+                          >
+                            {reviewTypes.map(
+                              (value) => (
+                                <option
+                                  key={value}
+                                  value={value}
+                                >
+                                  {value}
+                                </option>
+                              )
+                            )}
+                          </select>
+                        </label>
+                      ) : null}
+                    </div>
+
+                    <label className="mb-4 block">
+                      <span className="mb-1 block font-sans text-[10px] font-medium uppercase tracking-normal">
+                        Artist note (optional)
+                      </span>
+
+                      <textarea
+                        value={draft.note}
+                        onChange={(e) =>
+                          setDraft({
+                            ...draft,
+                            note: e.target.value,
+                          })
+                        }
+                        rows={2}
+                        className="w-full resize-none border border-[var(--frame)] bg-[var(--page-bg-solid)] px-2 py-1 font-display text-sm tracking-normal text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
+                      />
+                    </label>
+
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                       {editGalleryImages.map(
                         (

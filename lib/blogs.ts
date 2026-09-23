@@ -7,6 +7,7 @@ import {
   readBlogMetadata,
   type BlogMetadata,
 } from "@/lib/blog-metadata";
+import { unstable_cache } from "next/cache";
 
 export type BlogPost = {
   slug: string;
@@ -197,7 +198,7 @@ async function readBlogPost(
  *
  * Blog Markdown content comes from Cloudinary.
  */
-export async function getBlogPosts(): Promise<
+async function getBlogPostsUncached(): Promise<
   BlogPost[]
 > {
   const metadata =
@@ -231,7 +232,7 @@ export async function getBlogPosts(): Promise<
 /**
  * Get a single blog post.
  */
-export async function getBlogPost(
+async function getBlogPostUncached(
   slug: string
 ): Promise<BlogPost | null> {
   const metadata =
@@ -304,7 +305,6 @@ export async function getAllBlogImages(): Promise<
 > {
   return getBlogImagesFromCloudinary();
 }
-
 /**
  * Get years represented by blog posts.
  */
@@ -318,7 +318,8 @@ export async function getBlogYears(): Promise<
     new Set(
       metadata
         .map(
-          (post) => post.year
+          (post) =>
+            post.year
         )
         .filter(
           (year) =>
@@ -329,4 +330,56 @@ export async function getBlogYears(): Promise<
     (a, b) =>
       b.localeCompare(a)
   );
+}
+
+/* =========================================================
+   CACHED WRAPPERS
+   ========================================================= */
+
+/*
+ * getBlogPosts fetches the metadata manifest plus every blog's
+ * Markdown file in parallel (N+1 Cloudinary requests). Without
+ * caching, each cold request to /blogs re-fetches everything,
+ * and the first visitor after a cache expiry triggers a full
+ * re-render — which is the "rendering" pause you see.
+ *
+ * unstable_cache(revalidate: 300, tags: ["blogs"]) matches the
+ * page-level revalidate = 300, so the cache expires at the same
+ * time the page does. The tag is invalidated by the blog save
+ * handler (POST /api/blogs) so the listing updates immediately
+ * after an edit.
+ */
+const getCachedBlogPosts = unstable_cache(
+  getBlogPostsUncached,
+  ["blog-posts"],
+  {
+    revalidate: 300,
+    tags: ["blogs"],
+  }
+);
+
+export async function getBlogPosts() {
+  return getCachedBlogPosts();
+}
+
+/*
+ * getBlogPost is called twice on every cold request to
+ * /blogs/[slug]: once by the page component, once by
+ * generateMetadata. Without caching, that's two separate
+ * manifest + Markdown fetches.
+ *
+ * unstable_cache deduplicates within a single request, so the
+ * metadata manifest is only fetched once per render.
+ */
+const getCachedBlogPost = unstable_cache(
+  getBlogPostUncached,
+  ["blog-post"],
+  {
+    revalidate: 300,
+    tags: ["blogs"],
+  }
+);
+
+export async function getBlogPost(slug: string) {
+  return getCachedBlogPost(slug);
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
 import {
   isCloudinaryConfigured,
@@ -285,6 +286,8 @@ export async function POST(request: Request) {
       metadata
     );
 
+    revalidateTag("blogs", "max");
+
     return NextResponse.json({
       ok: true,
       slug,
@@ -373,6 +376,8 @@ export async function DELETE(
       slug,
       year
     );
+
+    revalidateTag("blogs", "max");
 
     return NextResponse.json({
       ok: true,
