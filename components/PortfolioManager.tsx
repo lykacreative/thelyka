@@ -335,9 +335,14 @@ export function PortfolioManager({
   // ============================================================
 
   function startEdit(item: PortfolioItem) {
+    /*
+     * Single uploads are stored as a 1-image gallery,
+     * so they open in the gallery editor too and
+     * images can be added to them.
+     */
     const hasGallery = Boolean(
       item.gallery &&
-        item.gallery.length > 1
+        item.gallery.length > 0
     );
 
     setEditingSrc(item.src);
