@@ -14,6 +14,7 @@ export const metadata: Metadata = {
     title: "blog · Lyka Mimics",
     description: "Thoughts, stories, and ideas from Lyka Mimics.",
     type: "website",
+    images: ["/opengraph-image"],
   },
 };
 
