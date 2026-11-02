@@ -17,6 +17,8 @@ export type PortfolioItemDoc = {
   height?: number;
   gallery?: any[];
   coverIndex?: number;
+  // Homepage order: 1 is first. null/absent = not featured.
+  featured?: number | null;
   createdAt?: Date;
   updatedAt?: Date;
 };

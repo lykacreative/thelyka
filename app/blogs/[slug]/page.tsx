@@ -1,8 +1,8 @@
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { getBlogPost } from "@/lib/blogs";
+import { getBlogPost, getBlogRedirect } from "@/lib/blogs";
 import { BlogRenderer } from "@/components/BlogRenderer";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BodyLock } from "@/components/BodyLock";
@@ -77,6 +77,11 @@ export default async function BlogPostPage({
   const post = await getBlogPost(slug);
 
   if (!post) {
+    // A renamed post: its old address moves permanently to the new one.
+    const renamedTo = await getBlogRedirect(slug);
+    if (renamedTo) {
+      permanentRedirect(`/blogs/${renamedTo}`);
+    }
     notFound();
   }
 
