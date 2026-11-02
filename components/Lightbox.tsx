@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { FaXmark } from 'react-icons/fa6';
 import { categoryLabels } from '@/lib/copy';
 import type { PortfolioItem } from '@/lib/portfolio';
@@ -63,6 +63,19 @@ export function Lightbox({ item, onClose }: LightboxProps) {
         }
     : null;
 
+  // On large screens the image fills the screen height (less the thumbnails row) and the
+  // width left beside the 20rem note panel, whichever runs out first.
+  const hasThumbnails = Boolean(item?.gallery && item.gallery.length > 1);
+  const reservedHeight = hasThumbnails ? '7rem' : '4rem';
+  const aspectRatio = currentDimensions
+    ? currentDimensions.width / currentDimensions.height
+    : 1;
+  const largeWidth = `min(calc(100vw - 24rem), calc((100dvh - ${reservedHeight}) * ${aspectRatio.toFixed(4)}))`;
+  const largeSizes =
+    aspectRatio < 1
+      ? `calc((100vh - ${reservedHeight}) * ${aspectRatio.toFixed(4)})`
+      : 'calc(100vw - 24rem)';
+
   return (
     <AnimatePresence>
       {item ? (
@@ -71,7 +84,7 @@ export function Lightbox({ item, onClose }: LightboxProps) {
             fixed inset-0 z-50
             flex items-center justify-center
             bg-[var(--overlay)]
-            p-3 sm:p-6
+            p-3 sm:p-6 lg:p-8
           "
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -88,7 +101,8 @@ export function Lightbox({ item, onClose }: LightboxProps) {
               max-h-[calc(100dvh-1.5rem)]
               overflow-y-auto
               lg:w-fit
-              lg:max-h-[80vh]
+              lg:max-w-[calc(100vw-4rem)]
+              lg:max-h-[calc(100dvh-4rem)]
               lg:overflow-visible
               lg:pr-80
             "
@@ -136,15 +150,18 @@ export function Lightbox({ item, onClose }: LightboxProps) {
                   alt={`${item.title} by lyka mimics`}
                   width={currentDimensions.width}
                   height={currentDimensions.height}
-                  sizes="(max-width: 1024px) 90vw, 80vh"
-                  className="
+                  sizes={`(max-width: 1023px) 90vw, ${largeSizes}`}
+                  style={{ '--lyka-lightbox-w': largeWidth } as CSSProperties}
+                  className={`
                     block
                     h-auto
+                    w-full
                     max-w-full
                     object-contain
-                    lg:max-h-[80vh]
-                    lg:w-auto
-                  "
+                    lg:w-[var(--lyka-lightbox-w)]
+                    lg:max-w-none
+                    ${hasThumbnails ? 'lg:max-h-[calc(100dvh-7rem)]' : 'lg:max-h-[calc(100dvh-4rem)]'}
+                  `}
                   priority
                 />
 

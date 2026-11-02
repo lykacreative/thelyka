@@ -1,6 +1,8 @@
 "use client";
 
+import { useCallback, useMemo, useState, type ComponentProps } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
+import { BlogImageViewer, type BlogImage } from "@/components/BlogImageViewer";
 
 type BlogRendererProps = {
   content: string;
@@ -80,10 +82,6 @@ const mdComponents: Components = {
       </pre>
     );
   },
-  img: ({ src, alt }) => (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src={src} alt={alt || ""} loading="lazy" />
-  ),
   hr: () => <hr />,
   table: ({ children }) => <div className="overflow-x-auto"><table>{children}</table></div>,
   thead: ({ children }) => <thead>{children}</thead>,
@@ -93,8 +91,60 @@ const mdComponents: Components = {
   td: ({ children }) => <td>{children}</td>
 };
 
+type ZoomableImageProps = {
+  src?: ComponentProps<"img">["src"];
+  alt?: string;
+  onOpen: (image: HTMLImageElement) => void;
+};
+
+// Every blog image opens bigger in the image viewer when clicked.
+function ZoomableImage({ src, alt, onOpen }: ZoomableImageProps) {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt={alt || ""}
+      loading="lazy"
+      data-lyka-zoom=""
+      tabIndex={0}
+      onClick={(event) => onOpen(event.currentTarget)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onOpen(event.currentTarget);
+        }
+      }}
+    />
+  );
+}
+
 export function BlogRenderer({ content }: BlogRendererProps) {
   const blocks = parseBlocks(content);
+  const [viewer, setViewer] = useState<{ images: BlogImage[]; index: number } | null>(null);
+
+  // The viewer slides through the post's images in page order, starting at the clicked one.
+  const openImage = useCallback((target: HTMLImageElement) => {
+    const scope = target.closest(".lyka-prose") ?? document;
+    const nodes = Array.from(scope.querySelectorAll<HTMLImageElement>("img[data-lyka-zoom]"));
+    setViewer({
+      images: nodes.map((node) => ({ src: node.currentSrc || node.src, alt: node.alt })),
+      index: Math.max(0, nodes.indexOf(target))
+    });
+  }, []);
+
+  const showImage = useCallback((index: number) => {
+    setViewer((current) => (current ? { ...current, index } : current));
+  }, []);
+
+  const closeViewer = useCallback(() => setViewer(null), []);
+
+  const components = useMemo<Components>(
+    () => ({
+      ...mdComponents,
+      img: ({ src, alt }) => <ZoomableImage src={src} alt={alt} onOpen={openImage} />
+    }),
+    [openImage]
+  );
 
   return (
     <>
@@ -106,21 +156,27 @@ export function BlogRenderer({ content }: BlogRendererProps) {
               className={`lyka-split${block.side === "right" ? " lyka-split--right" : ""}`}
             >
               <div className="lyka-split__image">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={block.imageSrc} alt={block.imageAlt} loading="lazy" />
+                <ZoomableImage src={block.imageSrc} alt={block.imageAlt} onOpen={openImage} />
               </div>
               <div className="lyka-split__text">
-                <ReactMarkdown components={mdComponents}>{block.text}</ReactMarkdown>
+                <ReactMarkdown components={components}>{block.text}</ReactMarkdown>
               </div>
             </div>
           );
         }
         return (
-          <ReactMarkdown key={i} components={mdComponents}>
+          <ReactMarkdown key={i} components={components}>
             {block.content}
           </ReactMarkdown>
         );
       })}
+
+      <BlogImageViewer
+        images={viewer?.images ?? []}
+        index={viewer?.index ?? null}
+        onIndexChange={showImage}
+        onClose={closeViewer}
+      />
     </>
   );
 }

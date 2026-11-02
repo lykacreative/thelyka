@@ -224,13 +224,15 @@ function ReviewCard({ item, onOpen }: { item: PortfolioItem; onOpen: () => void 
       onContextMenu={(event) => event.preventDefault()}
       className="group block text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
     >
-      <span className="relative block aspect-[4/5] w-full overflow-hidden">
+      {/* The review keeps its own shape, so the poster is never cut off at the sides. */}
+      <span className="relative block w-full overflow-hidden">
         <Image
           src={item.src}
           alt={item.title}
-          fill
-          className="object-cover transition duration-500 group-hover:scale-[1.03]"
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+          width={item.width}
+          height={item.height}
+          className="block h-auto w-full transition duration-500 group-hover:scale-[1.03]"
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
         />
         <span className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all duration-300 group-hover:bg-black/50 group-hover:opacity-100">
           <span className="font-display text-2xl font-normal tracking-normal text-white">Open</span>

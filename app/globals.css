@@ -219,6 +219,11 @@ a {
   margin: 1.5em 0;
 }
 
+/* Blog images open bigger in the image viewer (BlogImageViewer). */
+.lyka-prose img[data-lyka-zoom] {
+  cursor: zoom-in;
+}
+
 .lyka-prose hr {
   border: none;
   border-top: 2px solid var(--frame);
