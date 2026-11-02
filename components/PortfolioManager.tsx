@@ -325,6 +325,11 @@ export function PortfolioManager({
 
     set.add(currentYear());
 
+    // A fixed range too, 2018 to next year.
+    for (let year = 2018; year <= Number(currentYear()) + 1; year++) {
+      set.add(year.toString());
+    }
+
     return Array.from(set).sort((a, b) =>
       b.localeCompare(a)
     );

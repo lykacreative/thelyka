@@ -202,6 +202,19 @@ export function BlogEditor({
     );
   })();
 
+  // The year dropdowns also offer a fixed range, 2018 to next year.
+  const yearSelectOptions = (() => {
+    const set = new Set<string>(yearOptions);
+
+    for (let year = 2018; year <= Number(todayYear()) + 1; year++) {
+      set.add(year.toString());
+    }
+
+    return Array.from(set).sort((a, b) =>
+      b.localeCompare(a)
+    );
+  })();
+
   const filteredImages =
     imageFilter === "all"
       ? localImages
@@ -1055,7 +1068,7 @@ Write your text here. **Markdown** is supported.
                 }
                 className="w-full border border-[var(--frame)] bg-[var(--page-bg-solid)] px-2 py-1 font-display text-sm tracking-normal text-[var(--page-fg)]"
               >
-                {yearOptions.map(
+                {yearSelectOptions.map(
                   (y) => (
                     <option
                       key={y}
@@ -1167,7 +1180,7 @@ Write your text here. **Markdown** is supported.
                 }
                 className="w-full border border-[var(--frame)] bg-[var(--page-bg-solid)] px-3 py-2 font-display text-base tracking-normal text-[var(--page-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--frame)]"
               >
-                {yearOptions.map(
+                {yearSelectOptions.map(
                   (y) => (
                     <option
                       key={y}
@@ -1633,7 +1646,7 @@ Click "Insert 50/50 split" above to drop one in automatically.`}
                     }
                     className="w-full border border-[var(--frame)] bg-[var(--page-bg-solid)] px-2 py-1 font-display text-sm tracking-normal text-[var(--page-fg)]"
                   >
-                    {yearOptions.map(
+                    {yearSelectOptions.map(
                       (y) => (
                         <option
                           key={y}
