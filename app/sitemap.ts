@@ -6,7 +6,7 @@ export const revalidate = 300;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const siteUrl =
-    process.env.SITE_URL || "https://lykamimics.com";
+    process.env.SITE_URL || "https://www.lykamimics.com";
 
   const categoryPages: MetadataRoute.Sitemap = categories.map(
     (category) => ({

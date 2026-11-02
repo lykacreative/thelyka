@@ -11,7 +11,7 @@ const newsreader = Newsreader({
   adjustFontFallback: false,
 });
 
-const siteUrl = process.env.SITE_URL || 'https://lykamimics.com';
+const siteUrl = process.env.SITE_URL || 'https://www.lykamimics.com';
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
