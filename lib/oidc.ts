@@ -52,13 +52,20 @@ type HeaderReader = { get(name: string): string | null };
 
 // The site's own origin for this request (localhost, the preview URL or www.lykamimics.com).
 // Vercel passes the public host in x-forwarded-host; a malformed value falls back to the request URL.
-export function requestOrigin(requestUrl: string, headers: HeaderReader) {
+// x-forwarded-host/proto are used only behind a proxy that sets them itself (trustProxy: Vercel's edge);
+// anywhere else a client could send them, so they're ignored.
+export function requestOrigin(requestUrl: string, headers: HeaderReader, trustProxy = false) {
   const url = new URL(requestUrl);
-  const forwardedHost = headers.get("x-forwarded-host")?.split(",")[0]?.trim() ?? "";
-  const forwardedProto = headers.get("x-forwarded-proto")?.split(",")[0]?.trim().toLowerCase() ?? "";
+  const forwardedHost = trustProxy ? headers.get("x-forwarded-host")?.split(",")[0]?.trim() ?? "" : "";
+  const forwardedProto = trustProxy ? headers.get("x-forwarded-proto")?.split(",")[0]?.trim().toLowerCase() ?? "" : "";
   const host = /^[a-z0-9.-]+(?::\d{1,5})?$/i.test(forwardedHost) ? forwardedHost : url.host;
   const protocol = forwardedProto === "https" || forwardedProto === "http" ? forwardedProto : url.protocol.replace(":", "");
   return `${protocol}://${host}`;
+}
+
+// The origin this request came in on (the Google redirect URI and the same-origin check are built from it).
+export function originOf(request: { url: string; headers: HeaderReader }, env: Record<string, string | undefined> = process.env) {
+  return requestOrigin(request.url, request.headers, env.VERCEL === "1");
 }
 
 export function googleRedirectUri(origin: string) {

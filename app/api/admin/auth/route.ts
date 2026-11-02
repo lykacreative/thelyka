@@ -1,49 +1,42 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import {
   SESSION_COOKIE,
-  SESSION_MAX_AGE,
-  adminPasswordIsConfigured,
-  createSessionToken,
-  passwordMatches
+  createAdminSessionToken,
+  passwordLoginEnabled,
+  passwordMatches,
+  sessionCookieOptions
 } from "@/lib/admin-auth";
 
 export const runtime = "nodejs";
 
+// Password sign-in: only while LYKA_ADMIN_PASSWORD is still set (the switch-over to Google sign-in).
+// Public by design (it is the way in); the password check is timing-safe.
 export async function POST(request: Request) {
-  if (!adminPasswordIsConfigured()) {
-    return NextResponse.json(
-      { error: "LYKA_ADMIN_PASSWORD is not set on the server." },
-      { status: 500 }
-    );
+  if (!passwordLoginEnabled()) {
+    return NextResponse.json({ error: "Password sign-in is turned off. Use Sign in with Google." }, { status: 404 });
   }
 
-  let body: { password?: string } = {};
+  let body: { password?: unknown } = {};
   try {
-    body = (await request.json()) as { password?: string };
+    body = (await request.json()) as { password?: unknown };
   } catch {
     body = {};
   }
 
   const provided = typeof body.password === "string" ? body.password : "";
   if (!passwordMatches(provided)) {
+    await new Promise((resolve) => setTimeout(resolve, 600));
     return NextResponse.json({ error: "Wrong password." }, { status: 401 });
   }
 
-  const cookieStore = await cookies();
-  cookieStore.set(SESSION_COOKIE, createSessionToken(), {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: SESSION_MAX_AGE
-  });
-
-  return NextResponse.json({ ok: true });
+  const response = NextResponse.json({ ok: true });
+  response.cookies.set(SESSION_COOKIE, createAdminSessionToken("password"), sessionCookieOptions(request));
+  return response;
 }
 
-export async function DELETE() {
-  const cookieStore = await cookies();
-  cookieStore.delete(SESSION_COOKIE);
-  return NextResponse.json({ ok: true });
+// Sign out: clears this browser's session cookie.
+export async function DELETE(request: Request) {
+  const response = NextResponse.json({ ok: true });
+  response.cookies.set(SESSION_COOKIE, "", { ...sessionCookieOptions(request), maxAge: 0 });
+  return response;
 }
