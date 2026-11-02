@@ -40,6 +40,7 @@ export async function generateMetadata({
       title: artType,
       description: `${artType} by Lyka Mimics.`,
       type: 'website',
+      images: ['/opengraph-image'],
     },
   };
 }

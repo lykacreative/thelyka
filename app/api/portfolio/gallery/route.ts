@@ -391,7 +391,8 @@ export async function POST(request: Request) {
 
   const currentGallery = currentDoc.gallery ?? [];
 
-  if (currentGallery.length < 2) {
+  // A single upload is stored as a 1-image gallery and can be extended.
+  if (currentGallery.length === 0) {
     return NextResponse.json(
       {
         error: "The selected portfolio item is not a gallery.",

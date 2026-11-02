@@ -45,7 +45,12 @@ export function BlogPaneViewer({
     };
   }, [open, onClose]);
 
-  const coverSrc = cover ? (cover.startsWith("/media/") ? cover : `/media/${year}/${cover}`) : null;
+  // Only a bare filename gets the /media/<year>/ prefix; Cloudinary (http/https) URLs are used as they are.
+  const coverSrc = cover
+    ? cover.startsWith("/media/") || /^https?:\/\//.test(cover)
+      ? cover
+      : `/media/${year}/${cover}`
+    : null;
 
   return (
     <AnimatePresence>

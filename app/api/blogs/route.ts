@@ -286,7 +286,7 @@ export async function POST(request: Request) {
       metadata
     );
 
-    revalidateTag("blogs", "max");
+    revalidateTag("blogs", { expire: 0 });
 
     return NextResponse.json({
       ok: true,
@@ -377,7 +377,7 @@ export async function DELETE(
       year
     );
 
-    revalidateTag("blogs", "max");
+    revalidateTag("blogs", { expire: 0 });
 
     return NextResponse.json({
       ok: true,

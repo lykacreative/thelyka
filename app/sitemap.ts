@@ -1,12 +1,14 @@
 import type { MetadataRoute } from "next";
 import { categories } from "@/lib/portfolio";
 import { getBlogPosts } from "@/lib/blogs";
+import { artTypeSlugs } from "@/lib/art-types";
+import { reviewTypeSlugs } from "@/lib/review-types";
 
 export const revalidate = 300;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const siteUrl =
-    process.env.SITE_URL || "https://lykamimics.com";
+    process.env.SITE_URL || "https://www.lykamimics.com";
 
   const categoryPages: MetadataRoute.Sitemap = categories.map(
     (category) => ({
@@ -16,6 +18,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     })
   );
+
+  const typePages: MetadataRoute.Sitemap = [
+    ...artTypeSlugs.map((slug) => `${siteUrl}/arts/${slug}`),
+    ...reviewTypeSlugs.map((slug) => `${siteUrl}/reviews/${slug}`),
+  ].map((url) => ({
+    url,
+    lastModified: new Date(),
+    changeFrequency: "weekly",
+    priority: 0.7,
+  }));
 
   const posts = await getBlogPosts();
 
@@ -42,6 +54,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.9,
     },
     ...categoryPages,
+    ...typePages,
     ...blogPosts,
   ];
 }

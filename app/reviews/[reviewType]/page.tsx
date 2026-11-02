@@ -40,6 +40,7 @@ export async function generateMetadata({
       title: reviewType,
       description: `${reviewType} reviews by Lyka Mimics.`,
       type: 'website',
+      images: ['/opengraph-image'],
     },
   };
 }

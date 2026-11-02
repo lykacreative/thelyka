@@ -35,7 +35,8 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
     openGraph: {
       title,
       description: categoryDescriptions[category],
-      type: "website"
+      type: "website",
+      images: ["/opengraph-image"]
     }
   };
 }

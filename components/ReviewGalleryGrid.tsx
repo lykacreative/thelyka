@@ -26,12 +26,21 @@ export function ReviewGalleryGrid({ items, reviewType }: ReviewGalleryGridProps)
   const [selectedYear, setSelectedYear] = useState<string | null>(null);
   const [activeItem, setActiveItem] = useState<PortfolioItem | null>(null);
 
+  const typeItems = useMemo(
+    () =>
+      selectedReviewType
+        ? items.filter((item) => item.reviewType === selectedReviewType)
+        : items,
+    [items, selectedReviewType],
+  );
+
+  // Years of the selected type only, so a type never opens on a year it has nothing in.
   const years = useMemo(
     () =>
-      Array.from(new Set(items.map((item) => item.year))).sort((a, b) =>
+      Array.from(new Set(typeItems.map((item) => item.year))).sort((a, b) =>
         b.localeCompare(a),
       ),
-    [items],
+    [typeItems],
   );
 
   useEffect(() => {
@@ -51,19 +60,10 @@ export function ReviewGalleryGrid({ items, reviewType }: ReviewGalleryGridProps)
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
+  // On first load and whenever the type changes, open on that type's newest year.
   useEffect(() => {
-    if (selectedYear === null && years.length > 0) {
-      setSelectedYear(years[0]);
-    }
-  }, [selectedYear, years]);
-
-  const typeItems = useMemo(
-    () =>
-      selectedReviewType
-        ? items.filter((item) => item.reviewType === selectedReviewType)
-        : items,
-    [items, selectedReviewType],
-  );
+    setSelectedYear(years[0] ?? null);
+  }, [years]);
 
   const filtered = useMemo(() => {
     return items.filter((item) => {
@@ -85,7 +85,7 @@ export function ReviewGalleryGrid({ items, reviewType }: ReviewGalleryGridProps)
 
   const goToAll = () => {
     setSelectedReviewType(null);
-    window.history.replaceState(null, "", "/reviews/movies");
+    window.history.replaceState(null, "", "/reviews");
   };
 
   const currentYearIndex = selectedYear ? years.indexOf(selectedYear) : -1;

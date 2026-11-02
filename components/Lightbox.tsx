@@ -125,7 +125,6 @@ export function Lightbox({ item, onClose }: LightboxProps) {
                     focus-visible:ring-2
                     focus-visible:ring-[var(--frame)]
                     md:left-4 md:top-4
-                    opacity-0 group-hover:opacity-100
                   "
                 >
                   <FaXmark className="h-5 w-5" />

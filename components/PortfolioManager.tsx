@@ -325,6 +325,11 @@ export function PortfolioManager({
 
     set.add(currentYear());
 
+    // A fixed range too, 2018 to next year.
+    for (let year = 2018; year <= Number(currentYear()) + 1; year++) {
+      set.add(year.toString());
+    }
+
     return Array.from(set).sort((a, b) =>
       b.localeCompare(a)
     );
@@ -335,9 +340,14 @@ export function PortfolioManager({
   // ============================================================
 
   function startEdit(item: PortfolioItem) {
+    /*
+     * Single uploads are stored as a 1-image gallery,
+     * so they open in the gallery editor too and
+     * images can be added to them.
+     */
     const hasGallery = Boolean(
       item.gallery &&
-        item.gallery.length > 1
+        item.gallery.length > 0
     );
 
     setEditingSrc(item.src);
@@ -974,6 +984,15 @@ export function PortfolioManager({
       !editingSrc ||
       !editingGallery
     ) {
+      return;
+    }
+
+    if (!draft.title.trim()) {
+      setStatus({
+        kind: "error",
+        message:
+          "Title is required.",
+      });
       return;
     }
 
