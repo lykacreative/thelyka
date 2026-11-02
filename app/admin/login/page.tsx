@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { LoginForm } from "@/components/LoginForm";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { adminPasswordIsConfigured, isAdminAuthenticated } from "@/lib/admin-auth";
+import { safeNextPath } from "@/lib/safe-next-path";
 
 export const metadata = {
   title: "login"
@@ -15,8 +16,9 @@ type LoginPageProps = {
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const { next } = await searchParams;
+  const nextPath = safeNextPath(next);
   if (await isAdminAuthenticated()) {
-    redirect(next && next.startsWith("/") ? next : "/admin");
+    redirect(nextPath);
   }
 
   return (
@@ -31,7 +33,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         </p>
 
         <LoginForm
-          nextPath={next && next.startsWith("/") ? next : "/admin"}
+          nextPath={nextPath}
           passwordConfigured={adminPasswordIsConfigured()}
         />
       </section>

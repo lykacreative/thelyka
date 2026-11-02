@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { safeNextPath } from "@/lib/safe-next-path";
 
 type LoginFormProps = {
   nextPath: string;
@@ -34,7 +35,7 @@ export function LoginForm({ nextPath, passwordConfigured }: LoginFormProps) {
         setStatus({ kind: "error", message: payload.error ?? "Login failed." });
         return;
       }
-      router.replace(nextPath);
+      router.replace(safeNextPath(nextPath));
       router.refresh();
     } catch (error) {
       setStatus({ kind: "error", message: error instanceof Error ? error.message : "Login failed." });
