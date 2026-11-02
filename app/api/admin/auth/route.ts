@@ -1,18 +1,17 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import {
+  SESSION_COOKIE,
+  SESSION_MAX_AGE,
+  adminPasswordIsConfigured,
+  createSessionToken,
+  passwordMatches
+} from "@/lib/admin-auth";
 
 export const runtime = "nodejs";
 
-const SESSION_COOKIE = "lyka_admin_session";
-const SESSION_VALUE = "authenticated";
-
-function expectedPassword() {
-  return process.env.LYKA_ADMIN_PASSWORD ?? "";
-}
-
 export async function POST(request: Request) {
-  const expected = expectedPassword();
-  if (!expected) {
+  if (!adminPasswordIsConfigured()) {
     return NextResponse.json(
       { error: "LYKA_ADMIN_PASSWORD is not set on the server." },
       { status: 500 }
@@ -27,17 +26,17 @@ export async function POST(request: Request) {
   }
 
   const provided = typeof body.password === "string" ? body.password : "";
-  if (provided !== expected) {
+  if (!passwordMatches(provided)) {
     return NextResponse.json({ error: "Wrong password." }, { status: 401 });
   }
 
   const cookieStore = await cookies();
-  cookieStore.set(SESSION_COOKIE, SESSION_VALUE, {
+  cookieStore.set(SESSION_COOKIE, createSessionToken(), {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: 60 * 60 * 24 * 7
+    maxAge: SESSION_MAX_AGE
   });
 
   return NextResponse.json({ ok: true });
