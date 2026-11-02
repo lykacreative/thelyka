@@ -987,6 +987,15 @@ export function PortfolioManager({
       return;
     }
 
+    if (!draft.title.trim()) {
+      setStatus({
+        kind: "error",
+        message:
+          "Title is required.",
+      });
+      return;
+    }
+
     if (
       editGalleryImages.length === 0
     ) {
