@@ -85,7 +85,7 @@ export function ReviewGalleryGrid({ items, reviewType }: ReviewGalleryGridProps)
 
   const goToAll = () => {
     setSelectedReviewType(null);
-    window.history.replaceState(null, "", "/reviews/movies");
+    window.history.replaceState(null, "", "/reviews");
   };
 
   const currentYearIndex = selectedYear ? years.indexOf(selectedYear) : -1;
