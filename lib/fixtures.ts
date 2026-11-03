@@ -20,7 +20,8 @@ function readJson(file: string): unknown {
     warned = true;
     console.warn(`[lyka] Serving fixture data from ${dir} (LYKA_FIXTURES). Not for a deploy.`);
   }
-  return JSON.parse(fs.readFileSync(path.join(dir, file), "utf8"));
+  // Local files only (never on Vercel): keep the bundler from tracing the whole project into the server output.
+  return JSON.parse(fs.readFileSync(/*turbopackIgnore: true*/ path.join(/*turbopackIgnore: true*/ dir, file), "utf8"));
 }
 
 export function readFixtureItems() {
