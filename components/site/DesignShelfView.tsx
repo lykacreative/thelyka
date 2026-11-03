@@ -5,6 +5,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { coverOf, formatDate, pad2, type SiteItem } from "@/lib/site-items";
 import { openItem } from "@/lib/site/client";
 import { music } from "@/lib/site/music";
+import { purr } from "@/lib/site/purr";
 import { PROP, PROP_POOL, VP_PAUSE, VP_PLAY } from "./shelf-props";
 
 type Props = {
@@ -257,6 +258,17 @@ export function DesignShelfView({ design, year, hidden }: Props) {
               const spine = target.closest<HTMLElement>(".spine");
               const type = pointer.current;
               pointer.current = "";
+              // the cat purrs when it's clicked or tapped (only for a real one)
+              const cat = target.closest<HTMLElement>(".pr-cat");
+              if (cat) {
+                const ms = event.nativeEvent.isTrusted ? purr() : 0;
+                if (ms) {
+                  window.clearTimeout(Number(cat.dataset.purr));
+                  cat.classList.add("purr");
+                  cat.dataset.purr = String(window.setTimeout(() => cat.classList.remove("purr"), ms));
+                }
+                return;
+              }
               // the turntable plays / pauses the song (only for a real click, tap or key), and never opens a sleeve
               if (target.closest(".vp-btn, .vp-plat")) {
                 if (event.nativeEvent.isTrusted) music.toggle();

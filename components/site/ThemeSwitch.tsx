@@ -14,22 +14,43 @@ function syncMeta(theme: Theme) {
   if (meta) meta.content = theme === "night" ? "dark" : "light";
 }
 
+// two frames from now (the new look has been drawn once by then), or in 0.6 s if no frames come (a hidden tab)
+const afterPaint = (fn: () => void) => {
+  let done = false;
+  const once = () => {
+    if (!done) {
+      done = true;
+      fn();
+    }
+  };
+  requestAnimationFrame(() => requestAnimationFrame(once));
+  window.setTimeout(once, 600);
+};
+
 let flickTimer = 0;
-// Night: the neon logotype flickers on.
+// Night: the neon logotype flickers on (again, if it still is: off for a frame first, without forcing a layout).
 function flickNeon() {
   if (reducedMotion()) return;
   const html = root();
-  html.classList.remove("neon-flick");
-  void html.offsetWidth;
-  html.classList.add("neon-flick");
   window.clearTimeout(flickTimer);
-  flickTimer = window.setTimeout(() => html.classList.remove("neon-flick"), 1900);
+  const on = () => {
+    html.classList.add("neon-flick");
+    flickTimer = window.setTimeout(() => html.classList.remove("neon-flick"), 1900);
+  };
+  if (!html.classList.contains("neon-flick")) return on();
+  html.classList.remove("neon-flick");
+  afterPaint(on);
 }
 
+// Every colour changes at once: with "theme-swap" on, no part fades its own colours (80-odd of those at once made
+// the switch slow on phones); it comes off once the new look is drawn, so hovers fade again.
 function applyTheme(theme: Theme) {
-  root().dataset.theme = theme;
+  const html = root();
+  html.classList.add("theme-swap");
+  html.dataset.theme = theme;
   syncMeta(theme);
   if (theme === "night") flickNeon();
+  afterPaint(() => html.classList.remove("theme-swap"));
 }
 
 type ViewTransition = { ready: Promise<void>; skipTransition: () => void };
@@ -42,10 +63,16 @@ function setTheme(theme: Theme, button: HTMLElement | null) {
     applyTheme(theme);
     return;
   }
+  // The circle is given in shares of the screen, not pixels: a browser can draw the reveal at another scale than the
+  // page (Vivaldi on his 4K screen put the centre at 2/3 of the switch's x), and shares land right at any scale.
+  // A % radius is measured against the screen's diagonal / √2.
   const box = button.getBoundingClientRect();
+  const w = window.innerWidth;
+  const h = window.innerHeight;
   const x = box.left + box.width / 2;
   const y = box.top + box.height / 2;
-  const radius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));
+  const at = `at ${((x / w) * 100).toFixed(3)}% ${((y / h) * 100).toFixed(3)}%`;
+  const radius = (Math.hypot(Math.max(x, w - x), Math.max(y, h - y)) / (Math.hypot(w, h) / Math.SQRT2)) * 100;
   try {
     const transition = start.call(document, () => {
       if (current() !== theme) applyTheme(theme);
@@ -57,12 +84,12 @@ function setTheme(theme: Theme, button: HTMLElement | null) {
       try {
         transition.skipTransition();
       } catch {}
-    }, 1200); // and never leave the page blocked by a stuck reveal
+    }, 1000); // and never leave the page blocked by a stuck reveal
     transition.ready
       .then(() =>
         root().animate(
-          { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
-          { duration: 650, easing: "cubic-bezier(.4,0,.2,1)", pseudoElement: "::view-transition-new(root)" }
+          { clipPath: [`circle(0% ${at})`, `circle(${radius.toFixed(3)}% ${at})`] },
+          { duration: 420, easing: "cubic-bezier(.2,.7,.3,1)", pseudoElement: "::view-transition-new(root)" }
         )
       )
       .catch(() => {});

@@ -4,6 +4,7 @@
 import { memo, useEffect, useRef } from "react";
 import { reducedMotion, safeGet, safeSet } from "@/lib/site/client";
 import { music, type MusicTrack } from "@/lib/site/music";
+import { purr } from "@/lib/site/purr";
 
 // More songs can be added here; prev / next show up once there are two.
 const TRACKS = [
@@ -387,12 +388,20 @@ export const Player = memo(function Player() {
     on(arm, "pointercancel", armUp);
     on(arm, "lostpointercapture", armUp);
 
-    // the cat
+    // the cat: purrs (only for a real click, tap or key) and sends up hearts
+    let purring = 0;
     on($(".pl-cat"), "click", (e: MouseEvent) => {
       const c = e.currentTarget as HTMLElement;
       c.classList.remove("boop");
       void c.offsetWidth;
       c.classList.add("boop");
+      const ms = e.isTrusted ? purr() : 0;
+      if (ms) {
+        window.clearTimeout(purring);
+        timers.delete(purring);
+        c.classList.add("purr");
+        purring = later(() => c.classList.remove("purr"), ms);
+      }
       if (reducedMotion()) return;
       for (let i = 0; i < 3; i++) {
         const h = document.createElement("span");
@@ -585,7 +594,7 @@ export const Player = memo(function Player() {
       <button className="pl-grip" type="button" aria-label="Move the player: drag this tab, or use the arrow keys">
         <span aria-hidden="true" />
       </button>
-      <button className="pl-cat" type="button" aria-label="Boop the cat">
+      <button className="pl-cat" type="button" aria-label="Pet the cat">
         <svg viewBox="0 0 46 40" aria-hidden="true">
           <path
             d="M5 14 4 2l11 7c5-2 11-2 16 0l11-7-1 12c3 4 3 10 0 14-4 7-12 9-18 9S9 35 5 28c-2-4-2-10 0-14z"

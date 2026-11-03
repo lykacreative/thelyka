@@ -159,11 +159,7 @@ export function AboutSection({ photo }: { photo: AboutImage | null }) {
           <h2 className="script" id="about-h">
             About
           </h2>
-          <p className="about-txt">
-            I’m Lyka Mimics, a creator driven by curiosity, adaptability, and digital creativity. I enjoy exploring new ideas, experimenting with different styles, and
-            turning inspiration into something unique. Whether it’s design, content, or creative projects, I’m always evolving, learning, and finding new ways to express
-            myself through the things I create online.
-          </p>
+          <p className="about-txt">I’m Lyka, and this is an archive of my work. I hope you enjoyed it. More on my channel.</p>
           <a className="pill b" href="https://t.me/lykamimics" target="_blank" rel="noopener">
             Telegram{" "}
             <svg className="ico" viewBox="0 0 16 16" aria-hidden="true">

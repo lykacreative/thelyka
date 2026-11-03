@@ -64,6 +64,9 @@ a{color:inherit}
 .brand .mark{width:30px;height:30px;transition:transform .4s}
 .brand:hover .mark{transform:rotate(-20deg) scale(1.1)}
 .nav-links{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;flex:1 1 auto;min-width:0}
+/* the scroll box clips above and below too: give the active pill's glow room inside it without moving the bar,
+   and let taps through the extra room (the links still take them) */
+.nav-links{padding-block:16px;margin-block:-16px;pointer-events:none}.nav-links a{pointer-events:auto}
 .nav-links::-webkit-scrollbar{display:none}
 .nav-links a:first-child{margin-left:auto}.nav-links a:last-child{margin-right:auto}
 .nav-links a{font:700 15px/1 var(--f-grot);text-decoration:none;padding:12px 14px;border-radius:999px;white-space:nowrap;border:2px solid transparent;transition:background .15s,color .15s,border-color .15s}
@@ -135,6 +138,9 @@ a{color:inherit}
 .k-front .vinyl{opacity:1}
 .k-front:hover .vinyl,.k-front:focus-within .vinyl{transform:translateX(34%) rotate(40deg)}
 .tab{position:absolute;bottom:100%;left:var(--tx,10%);height:30px;max-width:62%;padding:0 12px;margin-bottom:-2px;border:2.5px solid var(--ink);border-bottom:0;border-radius:9px 9px 0 0;background:var(--tc,var(--cream));color:var(--ink);font:700 12px/26px var(--f-mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:1;transition:transform .15s}
+/* keep every tab on its sleeve: a tab at --tx moves left by --tx of its own width, so a long title near the right
+   end ("Some Experiments" at 54%) ends inside the sleeve instead of hanging past it */
+.tab{translate:calc(var(--tx,10%) * -1) 0}.divider .tab{translate:calc(var(--tx,58%) * -1) 0}
 .tab::after{content:"";position:absolute;inset:-8px -4px -6px}
 .tab:hover{transform:translateY(-4px)}
 .crate-panel{position:absolute;left:0;right:0;bottom:0;height:var(--P);z-index:110;border:3px solid var(--ink);border-radius:10px 10px 16px 16px;background:repeating-linear-gradient(180deg,var(--cc) 0 calc(var(--P)/4 - 3px),var(--cc2) calc(var(--P)/4 - 3px) calc(var(--P)/4));box-shadow:0 10px 0 -3px rgba(23,21,18,.22);pointer-events:none}
@@ -431,6 +437,8 @@ input.pl-seek::-moz-range-thumb{width:18px;height:18px;border-radius:50%;backgro
 .player.float .pl-dock{display:grid}
 .pl-cat{position:absolute;left:28px;top:-30px;width:46px;height:40px;cursor:pointer;border:0;padding:0;background:none;transform-origin:50% 100%;z-index:3}
 .pl-cat:hover,.pl-cat.boop{animation:wiggle .5s}
+/* purring: a quick buzz and two slow breaths, as long as the sound (the wiggle from the click finishes first) */
+.pl-cat.purr{animation:wiggle .5s,purrBuzz .09s linear infinite,purrBreath 1.1s ease-in-out 2}
 .pl-cat svg{width:100%;height:100%;overflow:visible}
 .pl-heart{position:absolute;left:var(--hx);top:-26px;width:13px;height:13px;color:#f28fb0;pointer-events:none;z-index:5;animation:heart 1.1s ease-out forwards}
 .pl-heart svg{width:100%;height:100%;display:block}
@@ -888,6 +896,8 @@ html.neon-flick[data-theme=night] .logo-l1{animation:neonOn 1.7s linear both}
 
 /* theme change: a round reveal from the switch */
 ::view-transition-old(root),::view-transition-new(root){animation:none;mix-blend-mode:normal}
+/* while the theme changes, every colour changes at once (ThemeSwitch adds .theme-swap for two frames) */
+.theme-swap *,.theme-swap *::before,.theme-swap *::after{transition:none!important}
 
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
@@ -994,6 +1004,7 @@ html.neon-flick[data-theme=night] .logo-l1{animation:neonOn 1.7s linear both}
 .pr-cat.poke .eye-c,.pr-cat.poke .zz{opacity:0}.pr-cat.poke .eye-o{opacity:1}
 .pr-cat.poke .ear{transform:rotate(-12deg)}
 .pr-cat.poke svg{animation:catHop .55s cubic-bezier(.3,1.6,.5,1)}
+.pr-cat{cursor:pointer}.pr-cat.purr{animation:purrBuzz .09s linear infinite,purrBreath 1.1s ease-in-out 2}
 .pr-plant .lv{transform-box:fill-box;transform-origin:50% 100%}
 .pr-plant.poke .lv{animation:sway 1.3s ease-in-out}
 /* the record player: plinth in a slight perspective, the music player's own record, tonearm, light, play button */
@@ -1064,6 +1075,8 @@ html.neon-flick[data-theme=night] .logo-l1{animation:neonOn 1.7s linear both}
 [data-theme=night] .pr-bk{filter:drop-shadow(0 0 5px rgba(255,210,94,.4))}
 @keyframes zz{0%{opacity:0;transform:translate(0,4px)}30%,70%{opacity:1}100%{opacity:0;transform:translate(4px,-6px)}}
 @keyframes catHop{0%,100%{transform:none}40%{transform:translateY(-12%) scaleY(1.04)}}
+@keyframes purrBuzz{0%,100%{translate:0 0}25%{translate:-.8px .4px}50%{translate:.7px -.4px}75%{translate:-.4px -.6px}}
+@keyframes purrBreath{0%,100%{scale:1}50%{scale:1.04 1.07}}
 @keyframes sway{0%,100%{transform:none}25%{transform:rotate(-9deg)}60%{transform:rotate(6deg)}85%{transform:rotate(-2deg)}}
 @keyframes steam{0%,100%{transform:translateY(0);opacity:.35}50%{transform:translateY(-3px);opacity:.7}}
 @keyframes puff{0%{transform:translateY(0) scale(1);opacity:1}100%{transform:translateY(-10px) scale(1.3);opacity:0}}
