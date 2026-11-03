@@ -322,7 +322,7 @@ function itemFromMongoDocument(
 async function scanPortfolioItems(): Promise<
   PortfolioItem[]
 > {
-  // Local runs without a database (LYKA_FIXTURES, never on Vercel).
+  // Local runs without a database (LYKA_FIXTURES, never on a deploy: lib/fixture-data.ts fixtureDirFrom).
   if (fixturesDir()) {
     return readFixtureItems();
   }

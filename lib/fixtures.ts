@@ -1,14 +1,14 @@
 import fs from "node:fs";
 import path from "node:path";
-import { fixtureItems, fixturePosts } from "@/lib/fixture-data";
+import { fixtureDirFrom, fixtureItems, fixturePosts } from "@/lib/fixture-data";
 
 // Local runs without a database: LYKA_FIXTURES=<folder with items.json and blogs.json> makes the data
-// functions (lib/portfolio.ts, lib/blogs.ts) serve those files instead of MongoDB. Never on a Vercel deploy
-// (VERCEL is set there for builds and functions), so a stray variable can't put test data on the live site.
+// functions (lib/portfolio.ts, lib/blogs.ts) serve those files instead of MongoDB. Never on a deploy (Vercel or CI),
+// and a production build or server only with LYKA_FIXTURES_BUILD=1 as well (rules in fixtureDirFrom), so a stray
+// variable can't put test data on the live site. Checked on every read, at build time and at run time.
 export function fixturesDir(): string | null {
-  const dir = (process.env.LYKA_FIXTURES ?? "").trim();
-  if (!dir || process.env.VERCEL) return null;
-  return path.resolve(dir);
+  const dir = fixtureDirFrom(process.env);
+  return dir ? path.resolve(dir) : null;
 }
 
 let warned = false;

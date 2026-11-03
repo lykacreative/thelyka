@@ -3,6 +3,21 @@
 import type { PortfolioItem } from "./portfolio";
 import type { BlogPost } from "./blogs";
 
+type Env = Record<string, string | undefined>;
+
+/** The fixture folder to serve, or null for the real data. Fixtures are for this PC only:
+ *  - never on a deploy: Vercel sets VERCEL (and VERCEL_ENV) for every build and function, CI services set CI;
+ *  - in a production build or server (NODE_ENV=production) only with a second, deliberate local switch,
+ *    LYKA_FIXTURES_BUILD=1 (the build checks), so a stray LYKA_FIXTURES alone never reaches a production build;
+ *  - otherwise (next dev) whenever LYKA_FIXTURES names a folder. */
+export function fixtureDirFrom(env: Env): string | null {
+  const dir = (env.LYKA_FIXTURES ?? "").trim();
+  if (!dir) return null;
+  if (env.VERCEL || env.VERCEL_ENV || env.CI) return null;
+  if (env.NODE_ENV === "production" && env.LYKA_FIXTURES_BUILD !== "1") return null;
+  return dir;
+}
+
 type FixtureImage = { src: string; w?: number; h?: number };
 type FixtureItem = {
   category: string;

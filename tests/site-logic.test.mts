@@ -16,7 +16,7 @@ import {
   sortPosts,
   plainText
 } from "../lib/site-items.ts";
-import { fixtureItems, fixturePosts, FIXTURE_FEATURED, readTimeOf } from "../lib/fixture-data.ts";
+import { fixtureDirFrom, fixtureItems, fixturePosts, FIXTURE_FEATURED, readTimeOf } from "../lib/fixture-data.ts";
 import { parseBlogBlocks } from "../lib/blog-blocks.ts";
 import { music } from "../lib/site/music.ts";
 
@@ -259,4 +259,22 @@ test("music: other controls drive the player's one audio and follow its state, b
   audio.dispatchEvent(new Event("play")); // detached: no longer followed
   assert.equal(music.get().playing, false);
   stop();
+});
+
+// ---------------------------------------------------------------- fixtures never reach a deploy
+
+test("fixtures: only on this PC; never on Vercel or CI; a production build needs the second switch", () => {
+  const dir = "../redesign/data";
+  assert.equal(fixtureDirFrom({}), null);
+  assert.equal(fixtureDirFrom({ LYKA_FIXTURES: "  " }), null);
+  assert.equal(fixtureDirFrom({ LYKA_FIXTURES: dir, NODE_ENV: "development" }), dir);
+  // a deploy: never, whatever else is set
+  for (const deploy of [{ VERCEL: "1" }, { VERCEL_ENV: "preview" }, { VERCEL_ENV: "production" }, { CI: "true" }]) {
+    assert.equal(fixtureDirFrom({ LYKA_FIXTURES: dir, NODE_ENV: "development", ...deploy }), null);
+    assert.equal(fixtureDirFrom({ LYKA_FIXTURES: dir, NODE_ENV: "production", LYKA_FIXTURES_BUILD: "1", ...deploy }), null);
+  }
+  // a production build or server: a stray LYKA_FIXTURES alone does nothing
+  assert.equal(fixtureDirFrom({ LYKA_FIXTURES: dir, NODE_ENV: "production" }), null);
+  assert.equal(fixtureDirFrom({ LYKA_FIXTURES: dir, NODE_ENV: "production", LYKA_FIXTURES_BUILD: "true" }), null);
+  assert.equal(fixtureDirFrom({ LYKA_FIXTURES: dir, NODE_ENV: "production", LYKA_FIXTURES_BUILD: "1" }), dir);
 });
