@@ -18,6 +18,7 @@ import {
 } from "../lib/site-items.ts";
 import { fixtureItems, fixturePosts, FIXTURE_FEATURED, readTimeOf } from "../lib/fixture-data.ts";
 import { parseBlogBlocks } from "../lib/blog-blocks.ts";
+import { music } from "../lib/site/music.ts";
 
 const post = (slug: string, date: string, featured?: boolean) => ({ slug, date, featured });
 
@@ -197,4 +198,54 @@ test("blog blocks: :::split pieces come out with their image and side", () => {
   assert.deepEqual(blocks[1], { type: "split", imageSrc: "https://x/p.jpg", imageAlt: "A painting", text: "Text beside.", side: "right" });
   assert.equal(blocks[0].type, "markdown");
   assert.equal(parseBlogBlocks(":::split\nno image\n:::\ntext\n:::")[0].type, "markdown");
+});
+
+// ---------------------------------------------------------------- the shared song (nav player + shelf turntable)
+
+test("music: other controls drive the player's one audio and follow its state, both ways", () => {
+  assert.deepEqual(music.get(), { ready: false, playing: false, track: null });
+  music.toggle(); // nothing to drive yet: no error, nothing changes
+  assert.equal(music.get().playing, false);
+
+  // a stand-in for the nav player: its audio reports play / pause back to the store, like the real one
+  const audio = { paused: true };
+  const report = () => music.set({ playing: !audio.paused });
+  const player = {
+    audio: audio as unknown as HTMLAudioElement,
+    toggle: () => {
+      audio.paused = !audio.paused;
+      report();
+    },
+    play: () => {
+      audio.paused = false;
+      report();
+    },
+    pause: () => {
+      audio.paused = true;
+      report();
+    }
+  };
+  const seen: boolean[] = [];
+  const stop = music.subscribe(() => seen.push(music.get().playing));
+  const detach = music.attach(player);
+  assert.equal(music.get().ready, true);
+
+  music.toggle(); // the turntable's button
+  assert.equal(audio.paused, false);
+  assert.equal(music.get().playing, true);
+  player.toggle(); // the nav player's own button
+  assert.equal(music.get().playing, false);
+  music.play();
+  music.play(); // already playing: no second start
+  assert.equal(music.get().playing, true);
+  music.pause();
+  assert.deepEqual(seen, [false, true, false, true, false]);
+
+  const track = { title: "cats in the cold", artist: "mage tears", cover: "/media/cats-in-the-cold-cover.jpg" };
+  music.set({ track });
+  assert.equal(music.get().track, track);
+
+  detach();
+  assert.deepEqual(music.get(), { ready: false, playing: false, track });
+  stop();
 });

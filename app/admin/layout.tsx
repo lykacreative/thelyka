@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+// The admin keeps the site's old base styles (Tailwind) and its own look.
+import "../globals.css";
 import "./admin.css";
 
 export const metadata: Metadata = {

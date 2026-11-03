@@ -1,0 +1,31 @@
+/* Site-only rules, after the mockup's stylesheet (b2-night.css). */
+
+/* anything with the hidden attribute stays hidden, whatever display its class gives it */
+.lyka-site [hidden]{display:none!important}
+
+/* the Day/Night switch says where it goes next */
+.tb-to-day{display:none}
+[data-theme=night] .tb-to-night{display:none}
+[data-theme=night] .tb-to-day{display:inline}
+
+/* phones: the widest confetti piece stays off so it can't push the page sideways */
+@media (max-width:599px){.cf.cf-wide{display:none}}
+
+
+/* the skip link shows when it gets keyboard focus */
+.skip:focus{position:fixed!important;left:12px;top:12px;width:auto;height:auto;clip:auto;clip-path:none;z-index:100;padding:10px 14px;background:var(--yellow);color:var(--ink);border:2.5px solid var(--ink);border-radius:999px;font:800 15px/1 var(--f-grot);text-decoration:none}
+
+/* /blogs and /blogs/<post>: the fanzine dialog's paper as a page under the nav */
+.zine.zpage{position:relative;inset:auto;display:block;width:auto;height:auto;min-height:calc(100vh - 64px);min-height:calc(100dvh - 64px);overflow:visible;overscroll-behavior:auto}
+.zpage .zn-bar{top:64px}
+.zn-body .zn-p{margin:0 0 1.15em}
+
+/* the post's picture viewer is a real dialog (above the nav and the player) */
+dialog.lb{width:100%;height:100%;max-width:none;max-height:none;margin:0;padding:0;border:0}
+dialog.lb:not([open]){display:none}
+dialog.lb::backdrop{background:rgba(14,11,22,.6)}
+
+/* a page that isn't there */
+.lost{min-height:60vh;display:grid;place-items:center;align-content:center;gap:18px;text-align:center}
+.lost h1{margin:0}
+.lost p{margin:0;font:400 17px/1.5 var(--f-grot)}
