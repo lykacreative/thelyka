@@ -1,5 +1,3 @@
-import fs from "node:fs";
-import path from "node:path";
 import { unstable_cache } from "next/cache";
 import { cache } from "react";
 
@@ -451,37 +449,4 @@ export async function getItemsGroupedByCategory() {
     Category,
     PortfolioItem[]
   >;
-}
-
-/**
- * The logo is still stored locally in /public/assets.
- * This is unrelated to portfolio images.
- */
-export function getLogoSrc() {
-  const publicDir = path.join(
-    process.cwd(),
-    "public"
-  );
-
-  const logoPng = path.join(
-    publicDir,
-    "assets",
-    "logo.png"
-  );
-
-  const logoSvg = path.join(
-    publicDir,
-    "assets",
-    "logo.svg"
-  );
-
-  if (fs.existsSync(logoPng)) {
-    return "/assets/logo.png";
-  }
-
-  if (fs.existsSync(logoSvg)) {
-    return "/assets/logo.svg";
-  }
-
-  return "";
 }
