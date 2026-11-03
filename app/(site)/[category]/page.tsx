@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { GalleryGrid } from "@/components/GalleryGrid";
-import { ArtGalleryGrid } from "@/components/ArtGalleryGrid";
-import { ReviewGalleryGrid } from "@/components/ReviewGalleryGrid";
-import { categories, getItemsByCategory, type Category } from "@/lib/portfolio";
+import { DesignSection } from "@/components/site/DesignSection";
+import { ReviewsSection } from "@/components/site/ReviewsSection";
+import { categories, type Category } from "@/lib/portfolio";
 
 type CategoryPageProps = {
   params: Promise<{
@@ -18,9 +17,7 @@ const categoryDescriptions: Record<Category, string> = {
 };
 
 export function generateStaticParams() {
-  return categories
-    .filter((category) => category !== "arts")
-    .map((category) => ({ category }));
+  return categories.filter((category) => category !== "arts").map((category) => ({ category }));
 }
 
 export async function generateMetadata({ params }: CategoryPageProps): Promise<Metadata> {
@@ -41,22 +38,16 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
   };
 }
 
+// /design and /reviews: that section of the home page on its own page.
 export default async function CategoryPage({ params }: CategoryPageProps) {
-  const { category: categoryParam } = await params;
-  if (!categories.includes(categoryParam as Category)) {
-    notFound();
-  }
+  const { category } = await params;
+  if (category !== "design" && category !== "reviews") notFound();
 
-  const category = categoryParam as Category;
-  const items = await getItemsByCategory(category);
-
-  if (category === "arts") {
-    return <ArtGalleryGrid items={items} />;
-  }
-
-  if (category === "reviews") {
-    return <ReviewGalleryGrid items={items} />;
-  }
-
-  return <GalleryGrid category={category} items={items} />;
+  return (
+    <main id="main">
+      <h1 className="vh">{category === "design" ? "Design" : "Reviews"} · Lyka Mimics</h1>
+      <span id="top" />
+      {category === "design" ? <DesignSection /> : <ReviewsSection syncPath />}
+    </main>
+  );
 }

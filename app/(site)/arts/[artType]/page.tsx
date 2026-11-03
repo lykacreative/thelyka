@@ -1,12 +1,10 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { ArtGalleryGrid } from '@/components/ArtGalleryGrid';
+import { ArtSection } from '@/components/site/ArtSection';
 import {
   artTypeFromSlug,
   artTypeSlugs,
-  type ArtTypeSlug,
 } from '@/lib/art-types';
-import { getItemsByCategory } from '@/lib/portfolio';
 
 export const dynamic = 'force-static';
 
@@ -56,12 +54,12 @@ export default async function ArtTypePage({
     notFound();
   }
 
-  const items = await getItemsByCategory('arts');
-
+  // That room of the Art section on its own page.
   return (
-    <ArtGalleryGrid
-      items={items}
-      artType={artType}
-    />
+    <main id='main'>
+      <h1 className='vh'>{artType} · Lyka Mimics</h1>
+      <span id='top' />
+      <ArtSection initialRoom={artType} syncPath />
+    </main>
   );
 }

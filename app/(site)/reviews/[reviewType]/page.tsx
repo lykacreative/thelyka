@@ -1,12 +1,10 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { ReviewGalleryGrid } from '@/components/ReviewGalleryGrid';
+import { ReviewsSection } from '@/components/site/ReviewsSection';
 import {
   reviewTypeFromSlug,
   reviewTypeSlugs,
-  type ReviewTypeSlug,
 } from '@/lib/review-types';
-import { getItemsByCategory } from '@/lib/portfolio';
 
 export const dynamic = 'force-static';
 
@@ -56,12 +54,12 @@ export default async function ReviewTypePage({
     notFound();
   }
 
-  const items = await getItemsByCategory('reviews');
-
+  // That tab of the Reviews section on its own page.
   return (
-    <ReviewGalleryGrid
-      items={items}
-      reviewType={reviewType}
-    />
+    <main id='main'>
+      <h1 className='vh'>{reviewType} · Lyka Mimics</h1>
+      <span id='top' />
+      <ReviewsSection initialType={reviewType} syncPath />
+    </main>
   );
 }
