@@ -138,6 +138,9 @@ a{color:inherit}
 .k-front .vinyl{opacity:1}
 .k-front:hover .vinyl,.k-front:focus-within .vinyl{transform:translateX(34%) rotate(40deg)}
 .tab{position:absolute;bottom:100%;left:var(--tx,10%);height:30px;max-width:62%;padding:0 12px;margin-bottom:-2px;border:2.5px solid var(--ink);border-bottom:0;border-radius:9px 9px 0 0;background:var(--tc,var(--cream));color:var(--ink);font:700 12px/26px var(--f-mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:1;transition:transform .15s}
+/* keep every tab on its sleeve: a tab at --tx moves left by --tx of its own width, so a long title near the right
+   end ("Some Experiments" at 54%) ends inside the sleeve instead of hanging past it */
+.tab{translate:calc(var(--tx,10%) * -1) 0}.divider .tab{translate:calc(var(--tx,58%) * -1) 0}
 .tab::after{content:"";position:absolute;inset:-8px -4px -6px}
 .tab:hover{transform:translateY(-4px)}
 .crate-panel{position:absolute;left:0;right:0;bottom:0;height:var(--P);z-index:110;border:3px solid var(--ink);border-radius:10px 10px 16px 16px;background:repeating-linear-gradient(180deg,var(--cc) 0 calc(var(--P)/4 - 3px),var(--cc2) calc(var(--P)/4 - 3px) calc(var(--P)/4));box-shadow:0 10px 0 -3px rgba(23,21,18,.22);pointer-events:none}
