@@ -1,15 +1,11 @@
-import {
-  readCloudinaryRaw,
-  getBlogImagesFromCloudinary
-} from "@/lib/cloudinary";
-
-import {
-  readBlogMetadata,
-  type BlogMetadata,
-} from "@/lib/blog-metadata";
 import { unstable_cache } from "next/cache";
+import { fixturesDir, readFixturePosts } from "@/lib/fixtures";
+import { isCloudinaryConfigured } from "@/lib/cloudinary";
+import { readLegacyBlogPosts } from "@/lib/blog-legacy";
+import { blogCollection, blogMigrationDone } from "@/lib/blog-store";
 
 export type BlogPost = {
+  id: string;
   slug: string;
   title: string;
   date: string;
@@ -18,368 +14,100 @@ export type BlogPost = {
   year: string;
   coverImage?: string;
   readTime: number;
+  // "Feature on homepage" in the admin: the homepage shows these (lib/blog-featured.ts).
+  featured: boolean;
 };
 
-type BlogFrontmatter = {
-  title?: string;
-  date?: string;
-  excerpt?: string;
-  cover?: string;
-};
+function calculateReadTime(content: string): number {
+  const words = content.trim().split(/\s+/).filter(Boolean).length;
+  return Math.max(1, Math.ceil(words / 200));
+}
 
-function parseFrontmatter(
-  raw: string
-): {
-  frontmatter: BlogFrontmatter;
-  body: string;
-} {
-  const match = raw.match(
-    /^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/
-  );
+/**
+ * All blog posts, newest first. Posts live in MongoDB (lib/blog-store.ts). Until the admin has copied the
+ * old Cloudinary raw posts into MongoDB (it does that the first time it opens), those are read too, so the
+ * site never loses a post during the switch.
+ */
+async function getBlogPostsUncached(): Promise<BlogPost[]> {
+  // Local runs without a database (LYKA_FIXTURES, never on a deploy: lib/fixture-data.ts fixtureDirFrom).
+  if (fixturesDir()) return readFixturePosts();
 
-  if (!match) {
-    return {
-      frontmatter: {},
-      body: raw.trim(),
-    };
-  }
+  const { connectToDatabase } = await import("@/lib/mongodb");
+  const { db } = await connectToDatabase();
+  const docs = await blogCollection(db).find({}).sort({ date: -1 }).toArray();
 
-  const frontmatter: BlogFrontmatter = {};
+  const posts: BlogPost[] = docs.map((doc) => ({
+    id: String(doc._id),
+    slug: doc.slug,
+    title: doc.title,
+    date: doc.date,
+    excerpt: doc.excerpt ?? "",
+    content: doc.content ?? "",
+    year: doc.year,
+    coverImage: doc.cover || undefined,
+    readTime: calculateReadTime(doc.content ?? ""),
+    featured: doc.featured === true
+  }));
 
-  for (const line of match[1].split("\n")) {
-    const colon = line.indexOf(":");
-
-    if (colon === -1) {
-      continue;
-    }
-
-    const key = line
-      .slice(0, colon)
-      .trim();
-
-    let value = line
-      .slice(colon + 1)
-      .trim();
-
-    if (
-      (value.startsWith('"') &&
-        value.endsWith('"')) ||
-      (value.startsWith("'") &&
-        value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
-    }
-
-    if (key === "title") {
-      frontmatter.title = value;
-    } else if (key === "date") {
-      frontmatter.date = value;
-    } else if (key === "excerpt") {
-      frontmatter.excerpt = value;
-    } else if (key === "cover") {
-      frontmatter.cover = value;
+  if (isCloudinaryConfigured() && !(await blogMigrationDone(db))) {
+    const known = new Set(docs.flatMap((doc) => [doc.slug, ...(doc.oldSlugs ?? [])]));
+    const legacy = await readLegacyBlogPosts(false).catch((error) => {
+      console.error("Reading the old blog posts failed:", error);
+      return [];
+    });
+    for (const post of legacy) {
+      if (known.has(post.slug)) continue;
+      posts.push({
+        id: `legacy:${post.year}/${post.slug}`,
+        slug: post.slug,
+        title: post.title,
+        date: post.date,
+        excerpt: post.excerpt,
+        content: post.content,
+        year: post.year,
+        coverImage: post.cover || undefined,
+        readTime: calculateReadTime(post.content),
+        featured: false
+      });
     }
   }
 
-  return {
-    frontmatter,
-    body: match[2].trim(),
-  };
+  return posts.sort((a, b) => b.date.localeCompare(a.date));
 }
 
-function titleFromSlug(slug: string) {
-  return slug
-    .replace(/[-_]+/g, " ")
-    .replace(/\b\w/g, (letter) =>
-      letter.toUpperCase()
-    );
+async function getBlogRedirectUncached(slug: string): Promise<string | null> {
+  if (fixturesDir()) return null;
+
+  const { connectToDatabase } = await import("@/lib/mongodb");
+  const { db } = await connectToDatabase();
+  const post = await blogCollection(db).findOne({ oldSlugs: slug }, { projection: { slug: 1 } });
+  return post && post.slug !== slug ? post.slug : null;
 }
-
-function calculateReadTime(
-  content: string
-): number {
-  const words = content
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean).length;
-
-  const wordsPerMinute = 200;
-
-  return Math.max(
-    1,
-    Math.ceil(
-      words / wordsPerMinute
-    )
-  );
-}
-
-function cloudinaryBlogPublicId(
-  year: string,
-  slug: string
-) {
-  return `thelyka/blogs/${year}/${slug}/index`;
-}
-
-/**
- * Read a single blog post from Cloudinary.
- */
-async function readBlogPost(
-  metadata: BlogMetadata
-): Promise<BlogPost | null> {
-  const publicId =
-    cloudinaryBlogPublicId(
-      metadata.year,
-      metadata.slug
-    );
-
-  const raw =
-    await readCloudinaryRaw(
-      publicId
-    );
-
-  if (!raw) {
-    console.warn(
-      `Blog Markdown not found in Cloudinary: ${publicId}`
-    );
-
-    return null;
-  }
-
-  const {
-    frontmatter,
-    body,
-  } = parseFrontmatter(raw);
-
-  /*
-   * Metadata manifest is the source of truth
-   * for listing information, while the Markdown
-   * file contains the actual blog content.
-   */
-  const title =
-    metadata.title ||
-    frontmatter.title ||
-    titleFromSlug(
-      metadata.slug
-    );
-
-  const date =
-    metadata.date ||
-    frontmatter.date ||
-    metadata.year;
-
-  const excerpt =
-    metadata.excerpt ||
-    frontmatter.excerpt ||
-    "";
-
-  const cover =
-    metadata.cover ||
-    frontmatter.cover ||
-    undefined;
-
-  return {
-    slug: metadata.slug,
-    title,
-    date,
-    excerpt,
-    content: body,
-    year: metadata.year,
-    coverImage: cover,
-    readTime:
-      calculateReadTime(body),
-  };
-}
-
-/**
- * Get all blog posts.
- *
- * Blog metadata comes from the Cloudinary
- * metadata manifest.
- *
- * Blog Markdown content comes from Cloudinary.
- */
-async function getBlogPostsUncached(): Promise<
-  BlogPost[]
-> {
-  const metadata =
-    await readBlogMetadata();
-
-  if (!metadata.length) {
-    return [];
-  }
-
-  const posts =
-    await Promise.all(
-      metadata.map((post) =>
-        readBlogPost(post)
-      )
-    );
-
-  return posts
-    .filter(
-      (
-        post
-      ): post is BlogPost =>
-        post !== null
-    )
-    .sort((a, b) =>
-      b.date.localeCompare(
-        a.date
-      )
-    );
-}
-
-/**
- * Get a single blog post.
- */
-async function getBlogPostUncached(
-  slug: string
-): Promise<BlogPost | null> {
-  const metadata =
-    await readBlogMetadata();
-
-  const postMetadata =
-    metadata.find(
-      (post) =>
-        post.slug === slug
-    );
-
-  if (!postMetadata) {
-    return null;
-  }
-
-  return readBlogPost(
-    postMetadata
-  );
-}
-
-/**
- * Get images referenced by a blog.
- *
- * Blog images are stored directly in
- * Cloudinary and their URLs are inside
- * the Markdown content.
- */
-export async function getBlogImages(
-  year: string,
-  slug: string
-): Promise<string[]> {
-  const publicId =
-    cloudinaryBlogPublicId(
-      year,
-      slug
-    );
-
-  const raw =
-    await readCloudinaryRaw(
-      publicId
-    );
-
-  if (!raw) {
-    return [];
-  }
-
-  const matches =
-    raw.match(
-      /https?:\/\/res\.cloudinary\.com\/[^\s)"']+/g
-    ) ?? [];
-
-  return Array.from(
-    new Set(matches)
-  );
-}
-
-/**
- * Get all blog images.
- *
- * Images are discovered from the Markdown
- * stored in Cloudinary.
- */
-export async function getAllBlogImages(): Promise<
-  {
-    src: string;
-    year: string;
-    filename: string;
-    publicId: string;
-  }[]
-> {
-  return getBlogImagesFromCloudinary();
-}
-/**
- * Get years represented by blog posts.
- */
-export async function getBlogYears(): Promise<
-  string[]
-> {
-  const metadata =
-    await readBlogMetadata();
-
-  return Array.from(
-    new Set(
-      metadata
-        .map(
-          (post) =>
-            post.year
-        )
-        .filter(
-          (year) =>
-            /^\d{4}$/.test(year)
-        )
-    )
-  ).sort(
-    (a, b) =>
-      b.localeCompare(a)
-  );
-}
-
-/* =========================================================
-   CACHED WRAPPERS
-   ========================================================= */
 
 /*
- * getBlogPosts fetches the metadata manifest plus every blog's
- * Markdown file in parallel (N+1 Cloudinary requests). Without
- * caching, each cold request to /blogs re-fetches everything,
- * and the first visitor after a cache expiry triggers a full
- * re-render — which is the "rendering" pause you see.
- *
- * unstable_cache(revalidate: 300, tags: ["blogs"]) matches the
- * page-level revalidate = 300, so the cache expires at the same
- * time the page does. The tag is invalidated by the blog save
- * handler (POST /api/blogs) so the listing updates immediately
- * after an edit.
+ * Cached for 5 minutes and tagged "blogs": every admin save or delete expires the tag and the blog paths at
+ * once (lib/revalidate-site.ts), so the next visit shows the change.
  */
-const getCachedBlogPosts = unstable_cache(
-  getBlogPostsUncached,
-  ["blog-posts"],
-  {
-    revalidate: 300,
-    tags: ["blogs"],
-  }
-);
+const getCachedBlogPosts = unstable_cache(getBlogPostsUncached, ["blog-posts-v2"], {
+  revalidate: 300,
+  tags: ["blogs"]
+});
+
+const getCachedBlogRedirect = unstable_cache(getBlogRedirectUncached, ["blog-redirect-v2"], {
+  revalidate: 300,
+  tags: ["blogs"]
+});
 
 export async function getBlogPosts() {
   return getCachedBlogPosts();
 }
 
-/*
- * getBlogPost is called twice on every cold request to
- * /blogs/[slug]: once by the page component, once by
- * generateMetadata. Without caching, that's two separate
- * manifest + Markdown fetches.
- *
- * unstable_cache deduplicates within a single request, so the
- * metadata manifest is only fetched once per render.
- */
-const getCachedBlogPost = unstable_cache(
-  getBlogPostUncached,
-  ["blog-post"],
-  {
-    revalidate: 300,
-    tags: ["blogs"],
-  }
-);
-
 export async function getBlogPost(slug: string) {
-  return getCachedBlogPost(slug);
+  const posts = await getCachedBlogPosts();
+  return posts.find((post) => post.slug === slug) ?? null;
+}
+
+// The current address of a renamed post (for a permanent redirect from its old address), or null.
+export async function getBlogRedirect(slug: string) {
+  return getCachedBlogRedirect(slug);
 }

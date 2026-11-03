@@ -1,8 +1,5 @@
 import { v2 as cloudinary } from "cloudinary";
 
-export const CLOUDINARY_METADATA_PUBLIC_ID =
-  "thelyka/portfolio/metadata";
-
 let configured = false;
 
 function ensureConfigured() {
@@ -46,14 +43,6 @@ export function createCloudinaryUploadSignature(
     params,
     process.env.CLOUDINARY_API_SECRET!
   );
-}
-
-export function isCloudinarySrc(src: string) {
-  return src.includes("res.cloudinary.com");
-}
-
-export function portfolioUsesCloudinary() {
-  return isCloudinaryConfigured();
 }
 
 /* =========================================================
@@ -124,246 +113,44 @@ async function fetchCloudinaryRaw(
 }
 
 /* =========================================================
-   PORTFOLIO METADATA
+   IMAGE UPLOADS AND DELETES (admin)
+   Uploads go straight from the browser to Cloudinary with a
+   signature from /api/admin/upload-signature. Deletes go only
+   through lib/cloudinary-delete.ts, which checks the root folder.
    ========================================================= */
 
-export async function readCloudinaryMetadataRaw(): Promise<
-  string | null
-> {
-  return fetchCloudinaryRaw(
-    CLOUDINARY_METADATA_PUBLIC_ID
-  );
-}
-
-export async function getRawResourceVersion(
-  publicId: string
-): Promise<number | null> {
-  const client = ensureConfigured();
-
-  try {
-    const result = await client.api.resource(publicId, {
-      resource_type: "raw",
-    });
-
-    return typeof result.version === "number"
-      ? result.version
-      : null;
-  } catch {
-    return null;
-  }
-}
-
-export async function writeCloudinaryMetadataRaw(
-  json: string
-): Promise<void> {
-  const client = ensureConfigured();
-
-  await new Promise<void>((resolve, reject) => {
-    const upload = client.uploader.upload_stream(
-      {
-        resource_type: "raw",
-        public_id: CLOUDINARY_METADATA_PUBLIC_ID,
-        overwrite: true,
-        invalidate: true,
-      },
-      (error) => {
-        if (error) {
-          reject(error);
-          return;
-        }
-
-        resolve();
-      }
-    );
-
-    upload.end(Buffer.from(json, "utf8"));
-  });
-}
-
-/* =========================================================
-   PORTFOLIO IMAGES
-   ========================================================= */
-
-export async function deleteCloudinaryImage(
-  publicId: string
-): Promise<void> {
-  const client = ensureConfigured();
-
-  await client.uploader.destroy(publicId, {
-    resource_type: "image",
-    invalidate: true,
-  });
-}
-
-/* =========================================================
-   BLOG IMAGES
-   ========================================================= */
-
-export async function uploadBlogImage(
-  buffer: Buffer,
-  year: string,
-  filename: string
-): Promise<{
-  secureUrl: string;
-  publicId: string;
-}> {
-  const client = ensureConfigured();
-
-  const cleanFilename = filename
-    .replace(/\.[^/.]+$/, "")
-    .replace(/[^a-zA-Z0-9_-]/g, "-");
-
-  const result = await new Promise<{
-    secure_url: string;
-    public_id: string;
-  }>((resolve, reject) => {
-    const upload = client.uploader.upload_stream(
-      {
-        folder: `thelyka/blog-media/${year}`,
-        public_id: cleanFilename,
-        overwrite: true,
-        invalidate: true,
-        resource_type: "image",
-      },
-      (error, uploadResult) => {
-        if (error || !uploadResult) {
-          reject(
-            error ??
-              new Error(
-                "Cloudinary blog image upload failed."
-              )
-          );
-
-          return;
-        }
-
-        resolve(uploadResult);
-      }
-    );
-
-    upload.end(buffer);
-  });
-
+export function cloudinaryUploadIdentity() {
+  ensureConfigured();
   return {
-    secureUrl: result.secure_url,
-    publicId: result.public_id,
+    cloudName: process.env.CLOUDINARY_CLOUD_NAME!,
+    apiKey: process.env.CLOUDINARY_API_KEY!,
   };
 }
 
- 
-export async function getBlogImagesFromCloudinary(): Promise<
-  {
-    src: string;
-    year: string;
-    filename: string;
-    publicId: string;
-  }[]
-> {
-  const client = ensureConfigured();
-
-  const resources: Array<{
-    secure_url?: string;
-    public_id?: string;
-  }> = [];
-
-  let nextCursor: string | undefined;
-
-  do {
-    const options: Record<string, unknown> = {
-      type: "upload",
-      resource_type: "image",
-      prefix: "thelyka/blog-media/",
-      max_results: 500,
-    };
-
-    if (nextCursor) {
-      options.next_cursor = nextCursor;
-    }
-
-    const result = await client.api.resources(options);
-
-    resources.push(...(result.resources ?? []));
-
-    nextCursor = result.next_cursor;
-  } while (nextCursor);
-
-  return resources
-    .filter(
-      (resource) =>
-        typeof resource.secure_url === "string" &&
-        typeof resource.public_id === "string"
-    )
-    .map((resource) => {
-      const publicId = resource.public_id!;
-      const src = resource.secure_url!;
-
-      const parts = publicId.split("/");
-
-      const filename =
-        parts[parts.length - 1] || publicId;
-
-      const year =
-        parts.length >= 3 &&
-        /^\d{4}$/.test(parts[2])
-          ? parts[2]
-          : "";
-
-      return {
-        src,
-        year,
-        filename,
-        publicId,
-      };
-    })
-    .sort((a, b) =>
-      b.src.localeCompare(a.src)
-    );
+export function cloudinaryCloudName() {
+  return process.env.CLOUDINARY_CLOUD_NAME ?? "";
 }
 
-
-/* =========================================================
-   GENERIC RAW FILES
-   Used for blog Markdown + blog metadata
-   ========================================================= */
-
-export async function uploadCloudinaryRaw(
-  content: string,
+// Returns Cloudinary's own answer: "ok" (deleted) or "not found" (already gone).
+export async function destroyCloudinaryImage(
   publicId: string
 ): Promise<string> {
   const client = ensureConfigured();
 
-  const result = await new Promise<{
-    secure_url: string;
-    public_id: string;
-  }>((resolve, reject) => {
-    const upload = client.uploader.upload_stream(
-      {
-        resource_type: "raw",
-        public_id: publicId,
-        overwrite: true,
-        invalidate: true,
-      },
-      (error, uploadResult) => {
-        if (error || !uploadResult) {
-          reject(
-            error ??
-              new Error(
-                "Cloudinary raw upload failed."
-              )
-          );
+  const result = (await client.uploader.destroy(publicId, {
+    resource_type: "image",
+    invalidate: true,
+  })) as { result?: string };
 
-          return;
-        }
-
-        resolve(uploadResult);
-      }
-    );
-
-    upload.end(Buffer.from(content, "utf8"));
-  });
-
-  return result.secure_url;
+  return result?.result ?? "unknown";
 }
+
+/* =========================================================
+   RAW FILES (read only)
+   The old blog store kept Markdown + a metadata JSON as raw
+   files under thelyka/blogs/. lib/blog-legacy.ts reads them
+   until the posts are moved into MongoDB.
+   ========================================================= */
 
 export async function readCloudinaryRaw(
   publicId: string
@@ -371,13 +158,54 @@ export async function readCloudinaryRaw(
   return fetchCloudinaryRaw(publicId);
 }
 
-export async function deleteCloudinaryRaw(
+// Like readCloudinaryRaw, but only "not found" returns null: timeouts and other
+// errors throw, so a hiccup is never mistaken for "there are no posts".
+export async function readCloudinaryRawStrict(
   publicId: string
-): Promise<void> {
+): Promise<string | null> {
   const client = ensureConfigured();
 
-  await client.uploader.destroy(publicId, {
-    resource_type: "raw",
-    invalidate: true,
+  let version: number | undefined;
+
+  try {
+    const resource = await client.api.resource(publicId, {
+      resource_type: "raw",
+    });
+
+    version = resource.version;
+  } catch (error) {
+    const status =
+      (error as { error?: { http_code?: number } })?.error?.http_code ??
+      (error as { http_code?: number })?.http_code;
+
+    if (status === 404) {
+      return null;
+    }
+
+    throw error;
+  }
+
+  const url =
+    client.url(publicId, {
+      resource_type: "raw",
+      secure: true,
+      version,
+    }) + `?t=${Date.now()}`;
+
+  const response = await fetch(url, {
+    cache: "no-store",
+    signal: AbortSignal.timeout(15000),
   });
+
+  if (response.status === 404) {
+    return null;
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to read Cloudinary raw file ${publicId} (${response.status}).`
+    );
+  }
+
+  return response.text();
 }

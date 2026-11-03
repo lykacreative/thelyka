@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import { Newsreader } from 'next/font/google';
-import { ThemeInit } from '@/components/ThemeInit';
-import './globals.css';
+import { THEME_SCRIPT } from '@/lib/site/theme-script';
 
 const newsreader = Newsreader({
   subsets: ['latin'],
@@ -9,6 +8,7 @@ const newsreader = Newsreader({
   display: 'swap',
   weight: ['400', '500', '600', '700'],
   adjustFontFallback: false,
+  preload: false, // the admin's face; the public site brings its own (app/(site)/layout.tsx)
 });
 
 const siteUrl = process.env.SITE_URL || 'https://www.lykamimics.com';
@@ -48,13 +48,18 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Day or night is set before the first paint (a saved choice, else the system's), so the page never flashes.
   return (
     <html
       lang='en'
+      data-scroll-behavior='smooth'
       suppressHydrationWarning
     >
-      <body className={`${newsreader.variable} ${newsreader.className}`}>
-        <ThemeInit />
+      <head>
+        <meta name='color-scheme' content='light dark' suppressHydrationWarning />
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
+      <body className={newsreader.variable}>
         {children}
       </body>
     </html>

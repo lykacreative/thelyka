@@ -1,5 +1,3 @@
-import fs from "node:fs";
-import path from "node:path";
 import { unstable_cache } from "next/cache";
 import { cache } from "react";
 
@@ -15,7 +13,7 @@ import {
   type ReviewType,
 } from "@/lib/review-types";
 
-import { connectToDatabase } from "@/lib/mongodb";
+import { fixturesDir, readFixtureItems } from "@/lib/fixtures";
 
 import {
   PORTFOLIO_COLLECTION,
@@ -43,6 +41,8 @@ export type PortfolioGalleryImage = {
 };
 
 export type PortfolioItem = {
+  // MongoDB id of the item.
+  id: string;
   src: string;
   category: Category;
   year: string;
@@ -64,6 +64,9 @@ export type PortfolioItem = {
   // Gallery support.
   gallery?: PortfolioGalleryImage[];
   coverIndex?: number;
+
+  // Homepage order set in the admin's Featured list: 1 is first. Undefined = not featured.
+  featured?: number;
 };
 
 function isCategory(value: string): value is Category {
@@ -243,6 +246,8 @@ function itemFromMongoDocument(
   }
 
   return {
+    id: String(doc._id ?? doc.src),
+
     src: doc.src,
 
     category,
@@ -296,6 +301,13 @@ function itemFromMongoDocument(
       typeof doc.coverIndex === "number"
         ? doc.coverIndex
         : undefined,
+
+    featured:
+      typeof doc.featured === "number" &&
+      Number.isFinite(doc.featured) &&
+      doc.featured > 0
+        ? doc.featured
+        : undefined,
   };
 }
 
@@ -308,12 +320,22 @@ function itemFromMongoDocument(
 async function scanPortfolioItems(): Promise<
   PortfolioItem[]
 > {
+  // Local runs without a database (LYKA_FIXTURES, never on a deploy: lib/fixture-data.ts fixtureDirFrom).
+  if (fixturesDir()) {
+    return readFixtureItems();
+  }
+
+  const { connectToDatabase } = await import(
+    "@/lib/mongodb"
+  );
+
   const { db } =
     await connectToDatabase();
 
-   const collection = db.collection(
-  PORTFOLIO_COLLECTION
-);
+  const collection =
+    db.collection<PortfolioItemDoc>(
+      PORTFOLIO_COLLECTION
+    );
 
   const documents = await collection
     .find({})
@@ -387,6 +409,28 @@ export async function getItemsByCategory(
   );
 }
 
+/**
+ * The items picked in the admin's Featured list, in that order
+ * (the homepage opens on these).
+ */
+export async function getFeaturedItems(): Promise<
+  PortfolioItem[]
+> {
+  const items =
+    await getPortfolioItems();
+
+  return items
+    .filter(
+      (item) =>
+        typeof item.featured === "number"
+    )
+    .sort(
+      (a, b) =>
+        (a.featured ?? 0) -
+        (b.featured ?? 0)
+    );
+}
+
 export async function getItemsGroupedByCategory() {
   const grouped = await Promise.all(
     categories.map(async (category) => {
@@ -405,37 +449,4 @@ export async function getItemsGroupedByCategory() {
     Category,
     PortfolioItem[]
   >;
-}
-
-/**
- * The logo is still stored locally in /public/assets.
- * This is unrelated to portfolio images.
- */
-export function getLogoSrc() {
-  const publicDir = path.join(
-    process.cwd(),
-    "public"
-  );
-
-  const logoPng = path.join(
-    publicDir,
-    "assets",
-    "logo.png"
-  );
-
-  const logoSvg = path.join(
-    publicDir,
-    "assets",
-    "logo.svg"
-  );
-
-  if (fs.existsSync(logoPng)) {
-    return "/assets/logo.png";
-  }
-
-  if (fs.existsSync(logoSvg)) {
-    return "/assets/logo.svg";
-  }
-
-  return "";
 }
