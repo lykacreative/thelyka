@@ -160,9 +160,13 @@ export function AboutSection({ photo }: { photo: AboutImage | null }) {
             About
           </h2>
           <p className="about-txt">
-            I’m Lyka Mimics, a creator driven by curiosity, adaptability, and digital creativity. I enjoy exploring new ideas, experimenting with different styles, and
-            turning inspiration into something unique. Whether it’s design, content, or creative projects, I’m always evolving, learning, and finding new ways to express
-            myself through the things I create online.
+            I’m Lyka Mimics, an artist and designer from Addis Ababa. I sketch in pencil and ink, paint in watercolour and on screen, take photos, cut edits, and
+            make posters as tributes to the films, albums, and books I love.
+          </p>
+          <p className="about-txt">
+            The “Mimics” is on purpose: I tend to imitate the people I love, and I believe we’re all a poor imitation of them anyway. Beksiński, Hopper, Saul Bass,
+            Taxi Driver, and Chet Baker are never far from my work. I like simple designs that let the negative space breathe. This is my escape from what I do for a
+            living, and I make it for you, not for myself.
           </p>
           <a className="pill b" href="https://t.me/lykamimics" target="_blank" rel="noopener">
             Telegram{" "}
