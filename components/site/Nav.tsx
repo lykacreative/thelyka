@@ -80,12 +80,15 @@ export function Nav() {
     const player = element.querySelector(".player");
     const watch = new MutationObserver(fit);
     if (player) watch.observe(player, { attributes: true, attributeFilter: ["class"] });
-    watch.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    // a theme change measures in the next frame, not in the middle of the switch
+    const themeWatch = new MutationObserver(() => requestAnimationFrame(fit));
+    themeWatch.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
     document.fonts?.ready.then(fit).catch(() => {});
     fit();
     return () => {
       resize?.disconnect();
       watch.disconnect();
+      themeWatch.disconnect();
       window.removeEventListener("resize", fit);
     };
   }, []);

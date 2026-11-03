@@ -19,6 +19,8 @@ import {
 import { fixtureDirFrom, fixtureItems, fixturePosts, FIXTURE_FEATURED, readTimeOf } from "../lib/fixture-data.ts";
 import { parseBlogBlocks } from "../lib/blog-blocks.ts";
 import { music } from "../lib/site/music.ts";
+import { purrSamples, purr, PURR_SECONDS } from "../lib/site/purr.ts";
+import { rng } from "../lib/site/client.ts";
 
 const post = (slug: string, date: string, featured?: boolean) => ({ slug, date, featured });
 
@@ -277,4 +279,40 @@ test("fixtures: only on this PC; never on Vercel or CI; a production build needs
   assert.equal(fixtureDirFrom({ LYKA_FIXTURES: dir, NODE_ENV: "production" }), null);
   assert.equal(fixtureDirFrom({ LYKA_FIXTURES: dir, NODE_ENV: "production", LYKA_FIXTURES_BUILD: "true" }), null);
   assert.equal(fixtureDirFrom({ LYKA_FIXTURES: dir, NODE_ENV: "production", LYKA_FIXTURES_BUILD: "1" }), dir);
+});
+
+test("purr: a soft two-breath rumble about 25 pulses a second, and silent outside a browser", () => {
+  const rate = 8000;
+  const s = purrSamples(rate, rng(7));
+  assert.equal(s.length, Math.round(rate * PURR_SECONDS));
+  let peak = 0;
+  for (const v of s) peak = Math.max(peak, Math.abs(v));
+  assert.ok(Math.abs(peak - 0.5) < 1e-6, `peak ${peak}`);
+  // it starts and ends in silence (no click), with a gap between the breaths
+  const level = (from: number, to: number) => {
+    let sum = 0;
+    for (let i = Math.round(from * rate); i < Math.round(to * rate); i++) sum += s[i] * s[i];
+    return Math.sqrt(sum / (Math.round(to * rate) - Math.round(from * rate)));
+  };
+  assert.equal(level(0, 0.05), 0);
+  assert.equal(level(0.95, 1.05), 0);
+  assert.equal(level(2.15, PURR_SECONDS), 0);
+  // the second breath (out) is the fuller one
+  assert.ok(level(1.3, 1.9) > level(0.25, 0.75) * 1.2, "the out-breath is louder");
+  // the flutter: the loudness pulses about 26 times a second on the out-breath
+  const env = Array.from(s.subarray(Math.round(1.3 * rate), Math.round(1.9 * rate)), (v) => v * v);
+  const mean = env.reduce((a, b) => a + b, 0) / env.length;
+  let best = 0;
+  let bestHz = 0;
+  for (let hz = 15; hz <= 40; hz++) {
+    const lag = Math.round(rate / hz);
+    let c = 0;
+    for (let i = 0; i + lag < env.length; i++) c += (env[i] - mean) * (env[i + lag] - mean);
+    if (c > best) [best, bestHz] = [c, hz];
+  }
+  assert.ok(bestHz >= 24 && bestHz <= 28, `pulses ${bestHz}/s`);
+  // the same seed makes the same purr
+  assert.deepEqual(purrSamples(rate, rng(7)).subarray(9000, 9010), s.subarray(9000, 9010));
+  // no window (the server): nothing plays
+  assert.equal(purr(), 0);
 });
