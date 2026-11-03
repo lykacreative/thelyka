@@ -63,10 +63,16 @@ function setTheme(theme: Theme, button: HTMLElement | null) {
     applyTheme(theme);
     return;
   }
+  // The circle is given in shares of the screen, not pixels: a browser can draw the reveal at another scale than the
+  // page (Vivaldi on his 4K screen put the centre at 2/3 of the switch's x), and shares land right at any scale.
+  // A % radius is measured against the screen's diagonal / √2.
   const box = button.getBoundingClientRect();
+  const w = window.innerWidth;
+  const h = window.innerHeight;
   const x = box.left + box.width / 2;
   const y = box.top + box.height / 2;
-  const radius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));
+  const at = `at ${((x / w) * 100).toFixed(3)}% ${((y / h) * 100).toFixed(3)}%`;
+  const radius = (Math.hypot(Math.max(x, w - x), Math.max(y, h - y)) / (Math.hypot(w, h) / Math.SQRT2)) * 100;
   try {
     const transition = start.call(document, () => {
       if (current() !== theme) applyTheme(theme);
@@ -82,7 +88,7 @@ function setTheme(theme: Theme, button: HTMLElement | null) {
     transition.ready
       .then(() =>
         root().animate(
-          { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
+          { clipPath: [`circle(0% ${at})`, `circle(${radius.toFixed(3)}% ${at})`] },
           { duration: 420, easing: "cubic-bezier(.2,.7,.3,1)", pseudoElement: "::view-transition-new(root)" }
         )
       )
