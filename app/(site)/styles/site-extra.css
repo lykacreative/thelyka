@@ -29,3 +29,14 @@ dialog.lb::backdrop{background:rgba(14,11,22,.6)}
 .lost{min-height:60vh;display:grid;place-items:center;align-content:center;gap:18px;text-align:center}
 .lost h1{margin:0}
 .lost p{margin:0;font:400 17px/1.5 var(--f-grot)}
+
+/* Empty sections (a fresh database before "copy live items", a room with nothing in it yet): the blog index's
+   "nothing here" card, in the colours of the section it sits in. */
+.sec-empty{max-width:640px;margin:clamp(20px,3vw,32px) auto 0;padding:32px 18px 28px;text-align:center;color:inherit;border:3px dashed color-mix(in srgb,currentColor 32%,transparent);border-radius:12px;font:400 16px/1.5 var(--f-grot);position:relative;z-index:2}
+.sec-empty-t{font:800 clamp(22px,3vw,30px)/1.15 var(--f-grot);font-stretch:85%;margin:0 0 6px;overflow-wrap:anywhere}
+.sec-empty p{margin:0}
+.lyka-site .gwall:empty{min-height:0}
+.sec.art .sec-empty{margin-left:clamp(16px,4vw,48px);margin-right:clamp(16px,4vw,48px)}
+@media (min-width:681px){.sec.art .sec-empty{margin-left:auto;margin-right:auto}}
+.hero-crate .crate-empty{margin:clamp(24px,6vw,72px) auto 0;max-width:420px}
+.bx-none .bx-none-last{margin:0}

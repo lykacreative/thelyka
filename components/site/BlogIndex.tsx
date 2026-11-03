@@ -53,7 +53,7 @@ export function BlogIndex({ posts }: { posts: IndexPost[] }) {
         </h1>
         <p className="zn-meta">{`${posts.length}${posts.length === 1 ? " post" : " posts"}`}</p>
       </header>
-      <div className="bx-tools">
+      <div className="bx-tools" hidden={!posts.length}>
         <label className="bx-search">
           <svg viewBox="0 0 20 20" aria-hidden="true">
             <circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" strokeWidth="2.4" />
@@ -126,7 +126,11 @@ export function BlogIndex({ posts }: { posts: IndexPost[] }) {
           </li>
         ))}
       </ul>
-      <div className="bx-none" hidden={!searching || hits.length > 0}>
+      <div className="bx-none" hidden={posts.length > 0}>
+        <p className="bx-none-t">No posts yet.</p>
+        <p className="bx-none-last">The first one is on its way.</p>
+      </div>
+      <div className="bx-none" hidden={!posts.length || !searching || hits.length > 0}>
         <p className="bx-none-t">
           Nothing here matches “<span>{q}</span>”.
         </p>

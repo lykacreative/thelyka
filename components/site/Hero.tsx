@@ -5,6 +5,7 @@ import { formatDate, pad2, type SiteItem } from "@/lib/site-items";
 import { openItem, rng } from "@/lib/site/client";
 import { useSite } from "./SiteProvider";
 import { Crate, type CrateEntry, type CrateHandle } from "./Crate";
+import { EmptyNote } from "./EmptyNote";
 import { HeroLamp } from "./HeroLamp";
 import { ArrowLeft, ArrowRight, ICONS, ICON_KEYS, Ico, TELEGRAM_URL, TelegramIcon } from "./icons";
 
@@ -278,6 +279,7 @@ export function Hero({ featuredKeys }: { featuredKeys: string[] }) {
               Art
             </span>
           </a>
+          {maxYear ? (
           <a
             className="stk c s-year"
             href="#design"
@@ -292,6 +294,7 @@ export function Hero({ featuredKeys }: { featuredKeys: string[] }) {
               {maxYear}
             </span>
           </a>
+          ) : null}
           <a className="stk y s-rev" href="#reviews" data-stk style={{ ["--r" as string]: "-5deg" }}>
             <span className="stk-in">
               <svg className="ico" viewBox="0 0 16 16" aria-hidden="true">
@@ -325,7 +328,13 @@ export function Hero({ featuredKeys }: { featuredKeys: string[] }) {
         </div>
         <div className="hero-crate">
           <HeroLamp />
-          {featured.length ? <FeaturedCrate items={featured} /> : null}
+          {featured.length ? (
+            <FeaturedCrate items={featured} />
+          ) : (
+            <EmptyNote title="The crate is empty for now." className="crate-empty">
+              New designs are on their way.
+            </EmptyNote>
+          )}
         </div>
       </div>
     </section>

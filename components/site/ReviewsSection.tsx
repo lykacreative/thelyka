@@ -6,6 +6,7 @@ import { coverOf, formatDate } from "@/lib/site-items";
 import { reviewSlugByType, reviewTypes, type ReviewType } from "@/lib/review-types";
 import { rng } from "@/lib/site/client";
 import { useSite } from "./SiteProvider";
+import { EmptyNote } from "./EmptyNote";
 
 const RSTEP = 10;
 
@@ -118,6 +119,11 @@ export function ReviewsSection({ initialType = "Movies", syncPath = false, headi
             );
           })}
         </ul>
+        {list.length ? null : (
+          <EmptyNote title={reviewTypes.some((t) => byType[t].length) ? `No ${type.toLowerCase()} reviewed yet.` : "Nothing on the watchlist yet."}>
+            Reviews are on their way.
+          </EmptyNote>
+        )}
         <button
           className="pill alt more"
           type="button"

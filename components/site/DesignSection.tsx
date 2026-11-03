@@ -7,6 +7,7 @@ import { reducedMotion, rng } from "@/lib/site/client";
 import { useSite } from "./SiteProvider";
 import { DESIGN_YEAR_EVENT } from "./Hero";
 import { DesignShelfView } from "./DesignShelfView";
+import { EmptyNote } from "./EmptyNote";
 
 const WALL_STEP = 24;
 
@@ -115,8 +116,8 @@ export function DesignSection({ heading = "h2" }: { heading?: "h1" | "h2" }) {
           <Heading className="script" id="design-h">
             Design
           </Heading>
-          <span className="count-oval">{`${design.length} pieces · ${span}`}</span>
-          <div className="seg" role="group" aria-label="View">
+          <span className="count-oval">{span ? `${design.length} pieces · ${span}` : `${design.length} pieces`}</span>
+          <div className="seg" role="group" aria-label="View" hidden={!design.length}>
             <button type="button" aria-pressed={view === "shelf"} onClick={() => setView("shelf")}>
               <svg className="ico" viewBox="0 0 16 16" aria-hidden="true">
                 <path d="M1 14.5h14M1 8.5h14" stroke="currentColor" strokeWidth="1.8" />
@@ -152,8 +153,14 @@ export function DesignSection({ heading = "h2" }: { heading?: "h1" | "h2" }) {
             </button>
           ))}
         </div>
-        <DesignShelfView key={shelfYear} design={design} year={shelfYear} hidden={view !== "shelf"} />
-        <DesignWall design={design} years={years} hidden={view !== "wall"} />
+        {design.length ? (
+          <>
+            <DesignShelfView key={shelfYear} design={design} year={shelfYear} hidden={view !== "shelf"} />
+            <DesignWall design={design} years={years} hidden={view !== "wall"} />
+          </>
+        ) : (
+          <EmptyNote title="The shelf is empty for now.">New designs are on their way.</EmptyNote>
+        )}
       </div>
     </section>
   );

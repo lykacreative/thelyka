@@ -1,6 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
 import { formatDate, type SitePost } from "@/lib/site-items";
+import { EmptyNote } from "./EmptyNote";
 
 // Blog on the home page: the posts picked "Feature on homepage" in the admin (up to 3, newest first; with none
 // picked, the newest 3), and "All posts" for the blog page.
@@ -14,6 +15,7 @@ export function BlogSection({ posts, total }: { posts: SitePost[]; total: number
           </h2>
           <span className="count-oval">{`${total}${total === 1 ? " post" : " posts"}`}</span>
         </div>
+        {posts.length ? null : <EmptyNote title="No posts yet.">The first one is on its way.</EmptyNote>}
         <div className="notes">
           {posts.map((post, i) => (
             <Link key={post.slug} className="note" href={`/blogs/${post.slug}`} style={{ ["--r" as string]: i % 2 ? "1.2deg" : "-1.4deg" }}>

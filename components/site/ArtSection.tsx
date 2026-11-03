@@ -6,6 +6,7 @@ import { coverOf, formatDate, type SiteItem } from "@/lib/site-items";
 import { artSlugByType, artTypes, type ArtType } from "@/lib/art-types";
 import { openItem, reducedMotion, rng } from "@/lib/site/client";
 import { useSite } from "./SiteProvider";
+import { EmptyNote } from "./EmptyNote";
 import { SpotlightRig, createSpotlight, type Spotlight, type SpotlightHandle } from "./Spotlight";
 
 type Room = "All" | ArtType;
@@ -351,6 +352,9 @@ export function ArtSection({ initialRoom = "All", syncPath = false, heading = "h
           );
         })}
       </ul>
+      {count ? null : (
+        <EmptyNote title={room === "All" ? "The wall is bare for now." : `No ${room.toLowerCase()} on the wall yet.`}>New pieces are on their way.</EmptyNote>
+      )}
       <div className="hang-row">
         <button
           className="hang-more"
