@@ -73,6 +73,7 @@ export function BlogPanel({ posts, active, onPostsChange, onDirtyChange }: BlogP
                 <span className="block truncate text-sm">{entry.title}</span>
                 <span className="block truncate text-xs text-[var(--a-muted)]">
                   {entry.date} · /{entry.slug}
+                  {entry.featured ? " · on homepage" : ""}
                 </span>
               </button>
             </li>

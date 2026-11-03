@@ -26,6 +26,7 @@ export type AdminPost = {
   cover: string;
   content: string;
   oldSlugs: string[];
+  featured: boolean;
   updatedAt: string;
 };
 

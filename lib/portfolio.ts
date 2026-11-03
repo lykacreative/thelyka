@@ -15,7 +15,7 @@ import {
   type ReviewType,
 } from "@/lib/review-types";
 
-import { connectToDatabase } from "@/lib/mongodb";
+import { fixturesDir, readFixtureItems } from "@/lib/fixtures";
 
 import {
   PORTFOLIO_COLLECTION,
@@ -322,6 +322,15 @@ function itemFromMongoDocument(
 async function scanPortfolioItems(): Promise<
   PortfolioItem[]
 > {
+  // Local runs without a database (LYKA_FIXTURES, never on Vercel).
+  if (fixturesDir()) {
+    return readFixtureItems();
+  }
+
+  const { connectToDatabase } = await import(
+    "@/lib/mongodb"
+  );
+
   const { db } =
     await connectToDatabase();
 

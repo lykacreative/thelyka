@@ -18,6 +18,8 @@ export type BlogPostDoc = {
   cover: string;
   content: string;
   oldSlugs: string[];
+  // Shown on the homepage ("Feature on homepage" in the admin). Missing on older posts = not featured.
+  featured?: boolean;
   createdAt: Date;
   updatedAt: Date;
 };

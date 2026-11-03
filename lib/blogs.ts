@@ -1,5 +1,5 @@
 import { unstable_cache } from "next/cache";
-import { connectToDatabase } from "@/lib/mongodb";
+import { fixturesDir, readFixturePosts } from "@/lib/fixtures";
 import { isCloudinaryConfigured } from "@/lib/cloudinary";
 import { readLegacyBlogPosts } from "@/lib/blog-legacy";
 import { blogCollection, blogMigrationDone } from "@/lib/blog-store";
@@ -14,6 +14,8 @@ export type BlogPost = {
   year: string;
   coverImage?: string;
   readTime: number;
+  // "Feature on homepage" in the admin: the homepage shows these (lib/blog-featured.ts).
+  featured: boolean;
 };
 
 function calculateReadTime(content: string): number {
@@ -27,6 +29,10 @@ function calculateReadTime(content: string): number {
  * site never loses a post during the switch.
  */
 async function getBlogPostsUncached(): Promise<BlogPost[]> {
+  // Local runs without a database (LYKA_FIXTURES, never on Vercel).
+  if (fixturesDir()) return readFixturePosts();
+
+  const { connectToDatabase } = await import("@/lib/mongodb");
   const { db } = await connectToDatabase();
   const docs = await blogCollection(db).find({}).sort({ date: -1 }).toArray();
 
@@ -39,7 +45,8 @@ async function getBlogPostsUncached(): Promise<BlogPost[]> {
     content: doc.content ?? "",
     year: doc.year,
     coverImage: doc.cover || undefined,
-    readTime: calculateReadTime(doc.content ?? "")
+    readTime: calculateReadTime(doc.content ?? ""),
+    featured: doc.featured === true
   }));
 
   if (isCloudinaryConfigured() && !(await blogMigrationDone(db))) {
@@ -59,7 +66,8 @@ async function getBlogPostsUncached(): Promise<BlogPost[]> {
         content: post.content,
         year: post.year,
         coverImage: post.cover || undefined,
-        readTime: calculateReadTime(post.content)
+        readTime: calculateReadTime(post.content),
+        featured: false
       });
     }
   }
@@ -68,6 +76,9 @@ async function getBlogPostsUncached(): Promise<BlogPost[]> {
 }
 
 async function getBlogRedirectUncached(slug: string): Promise<string | null> {
+  if (fixturesDir()) return null;
+
+  const { connectToDatabase } = await import("@/lib/mongodb");
   const { db } = await connectToDatabase();
   const post = await blogCollection(db).findOne({ oldSlugs: slug }, { projection: { slug: 1 } });
   return post && post.slug !== slug ? post.slug : null;

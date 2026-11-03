@@ -72,6 +72,7 @@ export function toAdminPost(doc: BlogPostDoc): AdminPost {
     cover: doc.cover ?? "",
     content: doc.content ?? "",
     oldSlugs: Array.isArray(doc.oldSlugs) ? doc.oldSlugs : [],
+    featured: doc.featured === true,
     updatedAt: isoDate(doc.updatedAt)
   };
 }

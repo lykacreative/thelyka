@@ -18,16 +18,24 @@ import {
   type SaveStatus
 } from "@/components/admin/ui";
 
-type Draft = { title: string; slug: string; date: string; excerpt: string; cover: string; content: string };
+type Draft = { title: string; slug: string; date: string; excerpt: string; cover: string; content: string; featured: boolean };
 
 function draftOf(post: AdminPost | null): Draft {
   return post
-    ? { title: post.title, slug: post.slug, date: post.date, excerpt: post.excerpt, cover: post.cover, content: post.content }
-    : { title: "", slug: "", date: todayIso(), excerpt: "", cover: "", content: "" };
+    ? { title: post.title, slug: post.slug, date: post.date, excerpt: post.excerpt, cover: post.cover, content: post.content, featured: post.featured }
+    : { title: "", slug: "", date: todayIso(), excerpt: "", cover: "", content: "", featured: false };
 }
 
 function same(a: Draft, b: Draft) {
-  return a.title === b.title && a.slug === b.slug && a.date === b.date && a.excerpt === b.excerpt && a.cover === b.cover && a.content === b.content;
+  return (
+    a.title === b.title &&
+    a.slug === b.slug &&
+    a.date === b.date &&
+    a.excerpt === b.excerpt &&
+    a.cover === b.cover &&
+    a.content === b.content &&
+    a.featured === b.featured
+  );
 }
 
 const marker = (key: string) => `(uploading:${key})`;
@@ -273,6 +281,33 @@ export function PostEditor({ post, active, onSaved, onDeleted, onDirtyChange }: 
           </button>
         </div>
       </div>
+
+      <label className="mt-4 flex w-fit cursor-pointer items-center gap-3 text-sm">
+        <input
+          type="checkbox"
+          role="switch"
+          aria-checked={draft.featured}
+          checked={draft.featured}
+          onChange={(event) => set("featured", event.target.checked)}
+          className="peer sr-only"
+        />
+        <span
+          aria-hidden="true"
+          className={`relative h-6 w-11 flex-none rounded-full border transition-colors peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--a-focus)] ${
+            draft.featured ? "border-[var(--a-accent)] bg-[var(--a-accent)]" : "border-[var(--a-line-strong)] bg-[var(--a-raise)]"
+          }`}
+        >
+          <span
+            className={`absolute top-[3px] h-4 w-4 rounded-full transition-[left,background-color] ${
+              draft.featured ? "left-[23px] bg-[var(--a-accent-ink)]" : "left-[3px] bg-[var(--a-muted)]"
+            }`}
+          />
+        </span>
+        <span>
+          Feature on homepage{" "}
+          <span className="text-[var(--a-muted)]">(up to 3 show, newest first; with none, the newest 3)</span>
+        </span>
+      </label>
 
       <label className="mt-4 block">
         <span className="a-label">Excerpt</span>
