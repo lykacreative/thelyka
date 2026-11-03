@@ -14,8 +14,18 @@ function syncMeta(theme: Theme) {
   if (meta) meta.content = theme === "night" ? "dark" : "light";
 }
 
-// two frames from now: the new look has been drawn once by then
-const afterPaint = (fn: () => void) => requestAnimationFrame(() => requestAnimationFrame(fn));
+// two frames from now (the new look has been drawn once by then), or in 0.6 s if no frames come (a hidden tab)
+const afterPaint = (fn: () => void) => {
+  let done = false;
+  const once = () => {
+    if (!done) {
+      done = true;
+      fn();
+    }
+  };
+  requestAnimationFrame(() => requestAnimationFrame(once));
+  window.setTimeout(once, 600);
+};
 
 let flickTimer = 0;
 // Night: the neon logotype flickers on (again, if it still is: off for a frame first, without forcing a layout).
