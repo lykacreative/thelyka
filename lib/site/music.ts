@@ -39,11 +39,17 @@ export const music = {
   },
   /** The player's side: report what's playing. */
   set,
-  /** The player's side: hand over the controls; the returned function takes them back. */
+  /** The player's side: hand over the controls; the returned function takes them back. The play state follows the
+   *  audio element's own events, so it stays right whichever control (or the song ending) changed it. */
   attach(next: MusicControls) {
     controls = next;
-    set({ ready: true, playing: !next.audio.paused });
+    const audio = next.audio;
+    const follow = () => set({ playing: !audio.paused });
+    const events = ["play", "pause", "ended", "emptied"];
+    events.forEach((type) => audio.addEventListener(type, follow));
+    set({ ready: true, playing: !audio.paused });
     return () => {
+      events.forEach((type) => audio.removeEventListener(type, follow));
       if (controls !== next) return;
       controls = null;
       set({ ready: false, playing: false });

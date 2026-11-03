@@ -4,7 +4,8 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { coverOf, formatDate, pad2, type SiteItem } from "@/lib/site-items";
 import { openItem } from "@/lib/site/client";
-import { PROP, PROP_POOL } from "./shelf-props";
+import { music } from "@/lib/site/music";
+import { PROP, PROP_POOL, VP_PAUSE, VP_PLAY } from "./shelf-props";
 
 type Props = {
   design: SiteItem[];
@@ -13,6 +14,24 @@ type Props = {
 };
 
 const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
+
+// The shelf's turntable shows the nav player's song and state: its record, its title on the button, spinning while
+// the song plays. Read from the shared player each time (the player may come up after the shelf).
+function syncRecords(ul: HTMLElement | null) {
+  if (!ul) return;
+  const { playing, track } = music.get();
+  ul.querySelectorAll<HTMLElement>(".pr-record").forEach((deck) => {
+    deck.classList.toggle("on", playing);
+    const img = deck.querySelector<HTMLImageElement>(".vp-lbl img");
+    if (img && track && img.getAttribute("src") !== track.cover) img.src = track.cover;
+    const button = deck.querySelector<HTMLButtonElement>(".vp-btn");
+    if (!button) return;
+    button.setAttribute("aria-label", playing ? "Pause" : track ? `Play ${track.title}` : "Play the record");
+    const icon = button.querySelector("svg");
+    const shape = playing ? VP_PAUSE : VP_PLAY;
+    if (icon && icon.innerHTML !== shape) icon.innerHTML = shape;
+  });
+}
 
 // The Design section's Shelf view: the year's designs stand upright on shelves. Point at a sleeve to pull it
 // out (touch: tap), click to open it; arrow keys move along the shelf. A short year fills its shelf: the
@@ -110,9 +129,9 @@ export function DesignShelfView({ design, year, hidden }: Props) {
     const addRun = (kind: "tail" | "row") => {
       const li = document.createElement("li");
       li.className = "sh-run " + kind;
-      li.setAttribute("aria-hidden", "true");
+      li.setAttribute("role", "none");
       li.innerHTML =
-        (kind === "tail" ? `<span class="prop pr-bk" style="width:${Math.round(Math.min(sh * PROP.bk[0], free - 14))}px">${PROP.bk[1]}</span>` : "") +
+        (kind === "tail" ? `<span class="prop pr-bk" aria-hidden="true" style="width:${Math.round(Math.min(sh * PROP.bk[0], free - 14))}px">${PROP.bk[1]}</span>` : "") +
         '<span class="rest"></span>';
       ul.appendChild(li);
       runs.push({ el: li.querySelector<HTMLElement>(".rest")!, items: [], used: 0, w: 0 });
@@ -134,9 +153,18 @@ export function DesignShelfView({ design, year, hidden }: Props) {
         (best as Run).used += w;
       }
     });
+    // the turntable is the one prop you can use (its play button), so it alone isn't hidden from screen readers
     runs.forEach((run) => {
-      run.el.innerHTML = run.items.map((key) => `<span class="prop pr-${key}" style="width:${Math.round(sh * PROP[key][0])}px">${PROP[key][1]}</span>`).join("");
+      run.el.innerHTML = run.items
+        .map((key) => {
+          const w = Math.round(sh * PROP[key][0]);
+          return key === "record"
+            ? `<span class="prop pr-record" style="width:${w}px;--u:${(w / 100).toFixed(3)}px">${PROP[key][1]}</span>`
+            : `<span class="prop pr-${key}" aria-hidden="true" style="width:${w}px">${PROP[key][1]}</span>`;
+        })
+        .join("");
     });
+    syncRecords(ul);
     setFit((f) => (f.per === per && f.cap === cap ? f : { per, cap }));
   }, []);
 
@@ -144,6 +172,12 @@ export function DesignShelfView({ design, year, hidden }: Props) {
     allRef.current = all;
     refit();
   }, [refit, all]);
+
+  // the turntable follows the song, whichever control started or stopped it
+  useEffect(() => {
+    syncRecords(spines.current);
+    return music.subscribe(() => syncRecords(spines.current));
+  }, []);
 
   // Refit when the shelf's width changes; after the observer returns, since the refit changes the shelf's
   // own height (the mockup hit a ResizeObserver loop without the wait). And once the fonts are in.
@@ -187,10 +221,11 @@ export function DesignShelfView({ design, year, hidden }: Props) {
     spines.current?.querySelectorAll<HTMLElement>(".spine")[index]?.focus({ preventScroll: true });
   });
 
-  // the props react when touched or pointed at: the cat wakes, the record spins, the plant sways
-  const poke = (target: EventTarget) => {
+  // the props react when touched or pointed at: the cat wakes, the turntable wobbles, the plant sways (a tap on the
+  // turntable is for its button, so it doesn't wobble then)
+  const poke = (target: EventTarget, tap = false) => {
     const prop = (target as Element).closest?.(".prop");
-    if (!prop || prop.classList.contains("poke")) return;
+    if (!prop || prop.classList.contains("poke") || (tap && prop.classList.contains("pr-record"))) return;
     prop.classList.add("poke");
     window.setTimeout(() => prop.classList.remove("poke"), 1500);
   };
@@ -215,12 +250,18 @@ export function DesignShelfView({ design, year, hidden }: Props) {
             onPointerDown={(event) => {
               pointer.current = event.pointerType;
               was.current = cur;
-              poke(event.target);
+              poke(event.target, true);
             }}
             onClick={(event) => {
-              const spine = (event.target as Element).closest<HTMLElement>(".spine");
+              const target = event.target as Element;
+              const spine = target.closest<HTMLElement>(".spine");
               const type = pointer.current;
               pointer.current = "";
+              // the turntable plays / pauses the song (only for a real click, tap or key), and never opens a sleeve
+              if (target.closest(".vp-btn, .vp-plat")) {
+                if (event.nativeEvent.isTrusted) music.toggle();
+                return;
+              }
               if (!spine) return;
               const i = Number(spine.dataset.i);
               if ((type === "touch" || type === "pen") && was.current !== i) {
@@ -235,6 +276,7 @@ export function DesignShelfView({ design, year, hidden }: Props) {
               if (spine && !pointer.current && Number(spine.dataset.i) !== cur) pull(Number(spine.dataset.i));
             }}
             onKeyDown={(event) => {
+              if ((event.target as Element).closest(".vp-btn")) return; // the turntable's button keeps its own keys
               const step = ({ ArrowRight: 1, ArrowLeft: -1, ArrowDown: fit.per, ArrowUp: -fit.per, Home: -1e5, End: 1e5 } as Record<string, number>)[event.key];
               if (step === undefined) return;
               event.preventDefault();

@@ -208,7 +208,7 @@ test("music: other controls drive the player's one audio and follow its state, b
   assert.equal(music.get().playing, false);
 
   // a stand-in for the nav player: its audio reports play / pause back to the store, like the real one
-  const audio = { paused: true };
+  const audio = Object.assign(new EventTarget(), { paused: true });
   const report = () => music.set({ playing: !audio.paused });
   const player = {
     audio: audio as unknown as HTMLAudioElement,
@@ -241,11 +241,22 @@ test("music: other controls drive the player's one audio and follow its state, b
   music.pause();
   assert.deepEqual(seen, [false, true, false, true, false]);
 
+  // the audio element's own events keep the store right too (the song ends, the source is swapped)
+  audio.paused = false;
+  audio.dispatchEvent(new Event("play"));
+  assert.equal(music.get().playing, true);
+  audio.paused = true;
+  audio.dispatchEvent(new Event("ended"));
+  assert.equal(music.get().playing, false);
+
   const track = { title: "cats in the cold", artist: "mage tears", cover: "/media/cats-in-the-cold-cover.jpg" };
   music.set({ track });
   assert.equal(music.get().track, track);
 
   detach();
   assert.deepEqual(music.get(), { ready: false, playing: false, track });
+  audio.paused = false;
+  audio.dispatchEvent(new Event("play")); // detached: no longer followed
+  assert.equal(music.get().playing, false);
   stop();
 });
