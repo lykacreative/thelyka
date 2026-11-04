@@ -1,9 +1,11 @@
 "use client";
 
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
-import { BlogRenderer } from "@/components/BlogRenderer";
+import { PostPreview } from "@/components/admin/PostPreview";
 import { api, todayIso, titleFromFileName } from "@/lib/admin-client";
 import { imageUrlsInMarkdown, isValidSlug, slugify } from "@/lib/blog-slug";
+import { placeAmong } from "@/lib/blog-preview";
+import { calculateReadTime } from "@/lib/read-time";
 import type { AdminPost, DeleteSummary } from "@/lib/admin-types";
 import { useUploadQueue } from "@/components/admin/useUploadQueue";
 import {
@@ -44,15 +46,16 @@ type UploadMode = "image" | "split-left" | "split-right" | "cover";
 
 type PostEditorProps = {
   post: AdminPost | null;
+  posts: AdminPost[];
   active: boolean;
   onSaved: (post: AdminPost, wasNew: boolean) => void;
   onDeleted: (id: string, files: DeleteSummary | null) => void;
   onDirtyChange: (dirty: boolean) => void;
 };
 
-// Write on the left, the post exactly as the live page shows it on the right (the site's own BlogRenderer
-// and CSS). Images go straight to Cloudinary and land in the text where the cursor is.
-export function PostEditor({ post, active, onSaved, onDeleted, onDirtyChange }: PostEditorProps) {
+// Write on the left, the post exactly as the live page shows it on the right (the site's own page and
+// stylesheet, desktop or phone). Images go straight to Cloudinary and land in the text where the cursor is.
+export function PostEditor({ post, posts, active, onSaved, onDeleted, onDirtyChange }: PostEditorProps) {
   const notify = useToast();
   const baseline = useMemo(() => draftOf(post), [post]);
   const [draft, setDraft] = useState<Draft>(baseline);
@@ -105,6 +108,13 @@ export function PostEditor({ post, active, onSaved, onDeleted, onDirtyChange }: 
   useEffect(() => () => onDirtyChange(false), [onDirtyChange]);
 
   const previewDraft = useDeferredValue(draft);
+  const previewData = useMemo(() => {
+    const content = previewDraft.content.replace(/!\[Uploading [^\]]*\]\(uploading:[^)]+\)/g, "*Uploading an image…*");
+    const title = previewDraft.title.trim() || "Untitled";
+    const others = posts.filter((entry) => entry.id !== post?.id);
+    const place = placeAmong(others, { slug: previewDraft.slug, title, date: previewDraft.date });
+    return { ...place, post: { title, date: previewDraft.date, readTime: calculateReadTime(content), coverImage: previewDraft.cover || null, content } };
+  }, [previewDraft, posts, post?.id]);
   const imagesInPost = useMemo(() => imageUrlsInMarkdown(draft.content), [draft.content]);
   const year = /^\d{4}/.test(draft.date) ? draft.date.slice(0, 4) : String(new Date().getFullYear());
 
@@ -399,28 +409,7 @@ export function PostEditor({ post, active, onSaved, onDeleted, onDirtyChange }: 
         </div>
 
         <div className={`min-w-0 ${view === "preview" ? "" : "hidden lg:block"}`}>
-          <div className="a-post-preview a-scroll-thin overflow-hidden rounded-lg border border-[var(--a-line)] lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto">
-            <article className="mx-auto w-full max-w-[720px] px-5 pb-16 pt-10 sm:px-8">
-              <header className="mb-10 border-b border-[var(--frame)] pb-8">
-                <time className="font-sans text-xs font-medium uppercase tracking-normal text-[var(--page-fg)]/70">{previewDraft.date}</time>
-                <h1 className="mt-3 font-display text-[32px] font-normal leading-[1.1] tracking-normal sm:text-[48px]">
-                  {previewDraft.title || "Untitled"}
-                </h1>
-                {previewDraft.excerpt ? (
-                  <p className="mt-4 max-w-xl font-sans text-base leading-relaxed text-[var(--page-fg)]/70">{previewDraft.excerpt}</p>
-                ) : null}
-              </header>
-              {previewDraft.cover ? (
-                <div className="relative mb-10 aspect-[16/9] w-full overflow-hidden border border-[var(--frame)] bg-[var(--panel-bg)]">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={previewDraft.cover} alt="" className="absolute inset-0 h-full w-full object-cover" />
-                </div>
-              ) : null}
-              <div className="lyka-prose">
-                <BlogRenderer content={previewDraft.content.replace(/!\[Uploading [^\]]*\]\(uploading:[^)]+\)/g, "*Uploading an image…*")} />
-              </div>
-            </article>
-          </div>
+          <PostPreview data={previewData} />
         </div>
       </div>
 

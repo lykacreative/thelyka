@@ -8,6 +8,7 @@ import { FeaturedPanel } from "@/components/admin/FeaturedPanel";
 import { BlogPanel } from "@/components/admin/BlogPanel";
 import { PreviewToolsPanel } from "@/components/admin/PreviewToolsPanel";
 import { ToastProvider, useToast } from "@/components/admin/ui";
+import { ThemeSwitch } from "@/components/site/ThemeSwitch";
 
 type Tab = "items" | "featured" | "blog" | "preview";
 
@@ -95,8 +96,8 @@ function Admin({ initialItems, initialPosts, env }: AdminAppProps) {
     <div className="mx-auto w-full max-w-[1200px] px-4 pb-24 sm:px-6 lg:px-8">
       <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 pb-5 pt-6 sm:pt-8">
         <div className="min-w-0">
-          <p className="text-xs uppercase tracking-[0.18em] text-[var(--a-muted)]">Lyka Mimics</p>
-          <h1 className="a-display mt-1 text-4xl leading-none sm:text-5xl">Admin</h1>
+          <p className="a-kick">Lyka Mimics</p>
+          <h1 className="a-display mt-2 text-6xl sm:text-7xl">Admin</h1>
         </div>
         <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm">
           {env.label !== "live" ? (
@@ -107,7 +108,8 @@ function Admin({ initialItems, initialPosts, env }: AdminAppProps) {
               {env.label === "preview" ? "Preview" : "Local"} · {env.dbName}
             </span>
           ) : null}
-          <span className="hidden truncate text-[var(--a-muted)] sm:inline">{env.signedInAs}</span>
+          <span className="hidden truncate font-mono text-xs text-[var(--a-muted)] sm:inline">{env.signedInAs}</span>
+          <ThemeSwitch className="theme-btn" />
           <a className="a-btn a-btn--ghost a-btn--small" href="/" target="_blank" rel="noreferrer">
             View site ↗
           </a>
@@ -123,19 +125,18 @@ function Admin({ initialItems, initialPosts, env }: AdminAppProps) {
         </p>
       ) : null}
 
-      <nav aria-label="Sections" className="sticky top-0 z-20 -mx-4 mb-6 border-b border-[var(--a-line)] bg-[var(--a-bg)] px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-        <ul className="a-scroll-thin flex gap-1 overflow-x-auto">
+      <nav aria-label="Sections" className="sticky top-0 z-20 -mx-4 mb-6 border-b-2 border-[var(--a-line-strong)] bg-[var(--a-bg)] px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+        <ul className="a-scroll-thin flex gap-1.5 overflow-x-auto py-2.5">
           {tabs.map((entry) => (
             <li key={entry.id} className="flex-none">
               <button
                 type="button"
                 onClick={() => choose(entry.id)}
                 aria-current={tab === entry.id ? "page" : undefined}
-                className={`relative px-3 py-3 text-sm transition ${tab === entry.id ? "text-[var(--a-fg)]" : "text-[var(--a-muted)] hover:text-[var(--a-fg)]"}`}
+                className="a-tab"
               >
                 {entry.label}
-                {entry.count !== undefined ? <span className="ml-1.5 text-xs tabular-nums text-[var(--a-faint)]">{entry.count}</span> : null}
-                {tab === entry.id ? <span aria-hidden="true" className="absolute inset-x-3 bottom-0 h-0.5 bg-[var(--a-fg)]" /> : null}
+                {entry.count !== undefined ? <small className="tabular-nums">{entry.count}</small> : null}
               </button>
             </li>
           ))}

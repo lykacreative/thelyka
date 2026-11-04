@@ -26,7 +26,7 @@ function stamp(value: unknown) {
   return value instanceof Date ? value.toISOString() : typeof value === "string" ? value : "";
 }
 
-// Save an item in place: fields, images (order, cover, added, removed) and featured on/off.
+// Save an item in place: fields, images (order, cover, added, removed) and featured on/off; or only hide / show it.
 // Removed images are deleted from Cloudinary only when the admin asked for it (deleteRemoved) and the
 // file is under this site's folder and not shown anywhere else.
 export async function PATCH(request: Request, context: Context) {
@@ -42,6 +42,19 @@ export async function PATCH(request: Request, context: Context) {
     const collection = portfolioCollection(db);
     const current = await collection.findOne(filter);
     if (!current) throw new NotFoundError("This item no longer exists (deleted elsewhere?). Reload the admin.");
+    // Hide / show on its own (the editor's Hide button): the item stays in the admin, the database and
+    // Cloudinary, and only leaves (or comes back to) the site. Unsaved edits in the editor are not touched.
+    if (typeof body.hidden === "boolean" && !("title" in body)) {
+      const saved = await collection.findOneAndUpdate(
+        { _id: current._id },
+        { $set: { hidden: body.hidden, updatedAt: new Date() } },
+        { returnDocument: "after" }
+      );
+      if (!saved) throw new NotFoundError("This item no longer exists.");
+      revalidateSite("portfolio");
+      return NextResponse.json({ item: toAdminItem(saved), files: null });
+    }
+
     if (typeof body.expectedUpdatedAt === "string" && body.expectedUpdatedAt !== stamp(current.updatedAt)) {
       throw new ConflictError("This item was changed somewhere else since you opened it. Reload to see the latest, then edit again.");
     }

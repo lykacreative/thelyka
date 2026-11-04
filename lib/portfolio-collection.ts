@@ -19,6 +19,8 @@ export type PortfolioItemDoc = {
   coverIndex?: number;
   // Homepage order: 1 is first. null/absent = not featured.
   featured?: number | null;
+  // Hidden in the admin: kept here and in Cloudinary, left off every page of the site. Absent = shown.
+  hidden?: boolean | null;
   createdAt?: Date;
   updatedAt?: Date;
 };

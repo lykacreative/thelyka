@@ -43,8 +43,8 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   return (
     <main className="flex min-h-screen items-center justify-center px-4 py-16">
       <section className="w-full max-w-sm">
-        <p className="text-xs uppercase tracking-[0.18em] text-[var(--a-muted)]">Lyka Mimics</p>
-        <h1 className="a-display mt-2 text-5xl leading-none">Admin</h1>
+        <p className="a-kick">Lyka Mimics</p>
+        <h1 className="a-display mt-2 text-6xl">Admin</h1>
 
         {errorMessage ? (
           <p role="alert" className="mt-8 rounded-md border border-[rgba(255,138,122,0.4)] bg-[rgba(255,138,122,0.1)] px-3 py-2 text-sm text-[var(--a-bad)]">

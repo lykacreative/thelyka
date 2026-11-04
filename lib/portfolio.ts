@@ -338,7 +338,7 @@ async function scanPortfolioItems(): Promise<
     );
 
   const documents = await collection
-    .find({})
+    .find({ hidden: { $ne: true } })
     .sort({
       year: -1,
       date: -1,

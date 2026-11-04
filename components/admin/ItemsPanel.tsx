@@ -40,7 +40,7 @@ const Row = memo(function Row({ item, open, onToggle }: { item: AdminItem; open:
         open ? "bg-[var(--a-raise)]" : "hover:bg-[var(--a-panel)]"
       }`}
     >
-      <span className="h-14 w-14 flex-none overflow-hidden rounded bg-[var(--a-raise)]">
+      <span className={`h-14 w-14 flex-none overflow-hidden rounded bg-[var(--a-raise)] ${item.hidden ? "opacity-45 grayscale" : ""}`}>
         {cover ? <Thumb src={cover.src} size={56} className="h-full w-full object-cover" /> : null}
       </span>
       <span className="min-w-0 flex-1">
@@ -51,8 +51,13 @@ const Row = memo(function Row({ item, open, onToggle }: { item: AdminItem; open:
           {item.gallery.length > 1 ? ` · ${item.gallery.length} images` : ""}
         </span>
       </span>
+      {item.hidden ? (
+        <span className="a-tag a-tag--hidden flex-none" title="Hidden: kept here, not on the site">
+          Hidden
+        </span>
+      ) : null}
       {item.featured !== null ? (
-        <span className="flex-none rounded-full border border-[var(--a-line-strong)] px-2 py-0.5 text-[11px] text-[var(--a-accent)]" title="Featured">
+        <span className="a-tag flex-none" title="Featured">
           ★ {item.featured}
         </span>
       ) : null}
@@ -71,6 +76,7 @@ export function ItemsPanel({ items, cloudinaryRoot, active, onItemsChange, onDir
   const [type, setType] = useState("all");
   const [year, setYear] = useState("all");
   const [featuredOnly, setFeaturedOnly] = useState(false);
+  const [hiddenOnly, setHiddenOnly] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [newFiles, setNewFiles] = useState<File[] | null>(null);
   const [fileOver, setFileOver] = useState(false);
@@ -101,14 +107,16 @@ export function ItemsPanel({ items, cloudinaryRoot, active, onItemsChange, onDir
       if (type !== "all" && typeOf(item) !== type) return false;
       if (year !== "all" && item.year !== year) return false;
       if (featuredOnly && item.featured === null) return false;
+      if (hiddenOnly && !item.hidden) return false;
       if (words.length) {
         const haystack = `${item.title} ${item.note} ${item.date}`.toLowerCase();
         if (!words.every((word) => haystack.includes(word))) return false;
       }
       return true;
     });
-  }, [items, query, category, type, year, featuredOnly, openId]);
+  }, [items, query, category, type, year, featuredOnly, hiddenOnly, openId]);
 
+  const hiddenCount = useMemo(() => items.filter((item) => item.hidden).length, [items]);
   const typeOptions = category === "arts" ? artTypes : category === "reviews" ? reviewTypes : [];
 
   const openRef = useRef(openId);
@@ -257,11 +265,18 @@ export function ItemsPanel({ items, cloudinaryRoot, active, onItemsChange, onDir
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--a-muted)]">
         <p aria-live="polite">
           {filtered.length === items.length ? `${items.length} items` : `${filtered.length} of ${items.length} items`}
+          {hiddenCount ? ` · ${hiddenCount} hidden` : ""}
         </p>
-        <label className="flex items-center gap-2">
-          <input type="checkbox" checked={featuredOnly} onChange={(event) => setFeaturedOnly(event.target.checked)} />
-          Featured only
-        </label>
+        <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          <label className="flex items-center gap-2">
+            <input type="checkbox" checked={featuredOnly} onChange={(event) => setFeaturedOnly(event.target.checked)} />
+            Featured only
+          </label>
+          <label className="flex items-center gap-2">
+            <input type="checkbox" checked={hiddenOnly} onChange={(event) => setHiddenOnly(event.target.checked)} />
+            Hidden only
+          </label>
+        </span>
       </div>
 
       <ul className="divide-y divide-[var(--a-line)] overflow-hidden rounded-lg border border-[var(--a-line)]">

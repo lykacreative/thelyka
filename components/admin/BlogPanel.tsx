@@ -82,7 +82,7 @@ export function BlogPanel({ posts, active, onPostsChange, onDirtyChange }: BlogP
         </ul>
       </nav>
 
-      <PostEditor key={post?.id ?? "new"} post={post} active={active} onSaved={onSaved} onDeleted={onDeleted} onDirtyChange={editorDirty} />
+      <PostEditor key={post?.id ?? "new"} post={post} posts={posts} active={active} onSaved={onSaved} onDeleted={onDeleted} onDirtyChange={editorDirty} />
     </div>
   );
 }
