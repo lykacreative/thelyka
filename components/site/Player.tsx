@@ -208,13 +208,17 @@ export const Player = memo(function Player() {
         return;
       }
       warmAround(track);
-      if (!reducedMotion()) {
+      if (!reducedMotion() && !document.hidden) {
         void turnTo(t);
         return;
       }
-      // reduced motion: straight to the new look, with its cover
+      // reduced motion: straight to the new look, with its cover. A tab in the background (a song ending on its own
+      // there) runs no animations and decodes no pictures, so it takes the look now and the cover fades in on return.
       const id = ++swapId;
-      void coverReady(t).then(() => id === swapId && restyle(t));
+      dip?.cancel();
+      dip = null;
+      if (document.hidden) restyle(t);
+      else void coverReady(t).then(() => id === swapId && restyle(t));
     }
     function setPlayingUI(playing: boolean) {
       player.classList.toggle("playing", playing);
