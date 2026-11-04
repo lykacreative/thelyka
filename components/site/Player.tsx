@@ -105,6 +105,42 @@ export const Player = memo(function Player() {
       scrub = false;
       player.classList.remove("scrub");
     };
+    // Covers are loaded and decoded before they're needed (the next song's once the page has loaded, the songs either
+    // side of the one playing from the first time the player is pointed at or focused), one picture per song, kept. A song change then shows its cover in
+    // the same frame as its look; before, the label still showed the last song's cover for a beat while the new one
+    // (an original of up to 3000 px) loaded and decoded.
+    type Cover = { img: HTMLImageElement; ready: Promise<unknown>; done: boolean };
+    const covers = new Map<string, Cover>([[songCover(TRACKS[0]), { img: $<HTMLImageElement>(".pl-cover"), ready: Promise.resolve(), done: true }]]);
+    function coverFor(t: Song) {
+      const src = songCover(t);
+      let cover = covers.get(src);
+      if (!cover) {
+        const img = new Image(640, 640);
+        img.className = "pl-cover";
+        img.alt = "";
+        img.decoding = "async";
+        img.draggable = false;
+        img.fetchPriority = "high";
+        img.src = src;
+        const c: Cover = { img, ready: img.decode().catch(() => undefined), done: false };
+        void c.ready.then(() => (c.done = true));
+        covers.set(src, (cover = c));
+      }
+      return cover;
+    }
+    const warmAround = (i: number) => {
+      coverFor(TRACKS[(i + 1) % TRACKS.length]);
+      coverFor(TRACKS[(i - 1 + TRACKS.length) % TRACKS.length]);
+    };
+    on(player, "pointerenter", () => warmAround(track), { once: true });
+    on(player, "focusin", () => warmAround(track), { once: true });
+    const warmNext = () => later(() => coverFor(TRACKS[(track + 1) % TRACKS.length]), 1200);
+    if (document.readyState === "complete") warmNext();
+    else on(window, "load", warmNext, { once: true });
+    const wait = (ms: number) => new Promise<void>((resolve) => later(resolve, ms));
+    // a cover that takes longer than this (a slow connection) doesn't hold the song's look back: it shows when it's in
+    const coverReady = (t: Song) => Promise.race([coverFor(t).ready, wait(900)]);
+
     // The song's look: its colours (Day and Night, read by the .skin rules in site-extra.css), its doodle, its
     // words and its label. The first song keeps the player's own look.
     function restyle(t: Song) {
@@ -123,14 +159,39 @@ export const Player = memo(function Player() {
       $(".pl-title").textContent = t.title;
       $(".pl-artist").textContent = songLine(t);
       $(".pl-hint").textContent = `tap the record · drag the needle or the line to skip · the ${t.tab} tab moves me`;
-      const cover = $<HTMLImageElement>(".pl-cover");
-      const src = songCover(t);
-      if (cover.getAttribute("src") !== src) cover.src = src;
+      const shown = $<HTMLImageElement>(".pl-cover");
+      const { img: cover, ready, done } = coverFor(t);
+      if (cover !== shown) shown.replaceWith(cover);
+      // a cover still on its way (a slow connection, quick presses) fades in when it's ready instead of drawing in
+      if (!done) {
+        cover.classList.add("late");
+        void ready.then(() => cover.classList.remove("late"));
+      }
       // the first song keeps the stylesheet's crop of its cover; the others show their crop, or the whole cover
       cover.style.transform = t.day ? (t.crop ?? "none") : "";
     }
-    let swapping = 0;
-    let swapped = 0;
+    // A new song turns the player over: it dips, takes the song's look and cover together, comes back. It waits at
+    // the bottom of the dip only if the cover isn't ready yet. Pressing again mid-turn carries on from where it is.
+    const LOW = { opacity: 0.15, scale: "0.94", rotate: "-2.5deg" };
+    const UP = { opacity: 1, scale: "1", rotate: "0deg" };
+    let swapId = 0;
+    let dip: Animation | null = null;
+    let rise: Animation | null = null;
+    async function turnTo(t: Song) {
+      const id = ++swapId;
+      if (!dip) {
+        const now = getComputedStyle(player);
+        const from = { opacity: now.opacity, scale: now.scale, rotate: now.rotate };
+        rise?.cancel();
+        dip = player.animate([from, LOW], { duration: 190, easing: "cubic-bezier(.4,0,1,1)", fill: "forwards" });
+      }
+      await Promise.all([dip.finished.catch(() => undefined), coverReady(t)]);
+      if (id !== swapId) return;
+      restyle(t);
+      rise = player.animate([LOW, UP], { duration: 280, easing: "cubic-bezier(0,0,.2,1)" });
+      dip?.cancel();
+      dip = null;
+    }
     function loadTrack(i: number, swap = true) {
       track = (i + TRACKS.length) % TRACKS.length;
       const t = TRACKS[track];
@@ -142,21 +203,18 @@ export const Player = memo(function Player() {
       $<HTMLButtonElement>(".pl-prev").hidden = !many;
       $<HTMLButtonElement>(".pl-next").hidden = !many;
       paint(audio.currentTime || 0);
-      window.clearTimeout(swapping);
-      window.clearTimeout(swapped);
-      if (!swap || reducedMotion()) {
-        player.classList.remove("swap");
+      if (!swap) {
         restyle(t);
         return;
       }
-      // a new song turns the player over: it dips, takes the song's look, comes back
-      player.classList.remove("swap");
-      void player.offsetWidth;
-      player.classList.add("swap");
-      swapping = later(() => restyle(TRACKS[track]), 190);
-      // the next song's cover comes in now, so it's ready when that song does
-      new Image().src = songCover(TRACKS[(track + 1) % TRACKS.length]);
-      swapped = later(() => player.classList.remove("swap"), 470);
+      warmAround(track);
+      if (!reducedMotion()) {
+        void turnTo(t);
+        return;
+      }
+      // reduced motion: straight to the new look, with its cover
+      const id = ++swapId;
+      void coverReady(t).then(() => id === swapId && restyle(t));
     }
     function setPlayingUI(playing: boolean) {
       player.classList.toggle("playing", playing);

@@ -87,6 +87,9 @@ dialog.lb::backdrop{background:rgba(14,11,22,.6)}
 .player.skin.scratching .pl-disc{box-shadow:0 0 0 3px var(--s-acc),0 0 0 7px color-mix(in srgb,var(--s-acc) 35%,transparent)}
 .player.skin .pl-rot::after{background:var(--s-paper)}
 .player.skin .pl-lbl{background:var(--s-raise)}
+/* a song's cover that isn't in yet when its look turns on waits hidden on the label and fades in (Player.tsx) */
+.pl-lbl img{transition:opacity .25s ease}
+.pl-lbl img.late{opacity:0}
 .player.skin .pl-arm::before{background:var(--s-arm);border-color:var(--s-line)}
 .player.skin .pl-arm::after{background:var(--s-acc);border-color:var(--s-line)}
 .player.skin .pl-arm:hover::after,.player.skin .pl-arm.drag::after{background:color-mix(in srgb,var(--s-acc) 75%,#fff);box-shadow:0 0 0 3px color-mix(in srgb,var(--s-acc) 45%,transparent)}
@@ -127,11 +130,3 @@ dialog.lb::backdrop{background:rgba(14,11,22,.6)}
 .player.mini .pl-prev{display:none}
 .player.mini .pl-btn.sm{width:32px;height:32px}
 .player.mini .pl-btn.sm svg{width:14px;height:14px}
-/* a new song turns the player over: it dips, takes the new look halfway (Player.tsx), comes back */
-.player.swap{animation:plSwap .47s cubic-bezier(.4,0,.2,1)}
-@keyframes plSwap{
-  0%{opacity:1;scale:1;rotate:0deg}
-  40%{opacity:.15;scale:.94;rotate:-2.5deg}
-  100%{opacity:1;scale:1;rotate:0deg}
-}
-@media (prefers-reduced-motion:reduce){.player.swap{animation:none}}
