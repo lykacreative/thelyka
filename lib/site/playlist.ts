@@ -2,7 +2,8 @@
 // accent, play button and cat colours by Day and by Night, a doodle along the top (lib/site/doodles.ts), which tab
 // colour the hint names, and the part of its cover the record's label shows. The first song is the player's
 // original look (the cats-in-the-cold paper in b2-night.css), so it has no colours of its own.
-// The site serves byte-for-byte copies of the original song files from public/media/songs; the originals are kept
+// The site serves byte-for-byte copies of the original song files from public/media/songs, except the lossless
+// (FLAC) ones, which it serves as 320 kbps MP3s so they start fast (his call, 2026-11-04); the originals are kept
 // together in one folder off the site.
 
 export type SongLook = { paper: string; ink: string; acc: string; btn: string; cat: string };
@@ -35,7 +36,7 @@ export const PLAYLIST: Song[] = [
     artist: "mage tears",
     album: "cats in the cold",
     year: 2022,
-    src: "/media/cats-in-the-cold.flac",
+    src: "/media/cats-in-the-cold.mp3",
     cover: "/media/cats-in-the-cold-cover.jpg",
     dur: 166,
     tab: "pink",
@@ -47,7 +48,7 @@ export const PLAYLIST: Song[] = [
     artist: "Pastel Ghost",
     album: "Abyss",
     year: 2015,
-    src: S + "dark-beach.flac",
+    src: S + "dark-beach.mp3",
     cover: S + "dark-beach.jpg",
     dur: 222,
     crop: "translate(-50%,-26%) scale(2.2)",
@@ -62,7 +63,7 @@ export const PLAYLIST: Song[] = [
     artist: "tommy oeffling",
     album: "tomboy / laundry / oh, you",
     year: 2023,
-    src: S + "oh-you.flac",
+    src: S + "oh-you.mp3",
     cover: S + "oh-you.jpg",
     dur: 134,
     crop: "translate(-45%,9%) scale(1.8)",
@@ -92,7 +93,7 @@ export const PLAYLIST: Song[] = [
     artist: "Dirty Beaches",
     album: "Badlands",
     year: 2011,
-    src: S + "true-blue.flac",
+    src: S + "true-blue.mp3",
     cover: S + "true-blue.jpg",
     dur: 171,
     crop: "translate(-19%,8%) scale(1.6)",
@@ -107,7 +108,7 @@ export const PLAYLIST: Song[] = [
     artist: "Takako Mamiya",
     album: "LOVE TRIP",
     year: 2023,
-    src: S + "kanashimiwa-yoruno-muko.flac",
+    src: S + "kanashimiwa-yoruno-muko.mp3",
     cover: S + "kanashimiwa-yoruno-muko.jpg",
     dur: 245,
     crop: "translate(-56%,-10%) scale(2)",
@@ -122,7 +123,7 @@ export const PLAYLIST: Song[] = [
     artist: "Brent Faiyaz",
     album: "Make Luv",
     year: 2018,
-    src: S + "make-luv.flac",
+    src: S + "make-luv.mp3",
     cover: S + "make-luv.jpg",
     dur: 193,
     crop: "translate(-9%,9%) scale(1.8)",
@@ -137,7 +138,7 @@ export const PLAYLIST: Song[] = [
     artist: "Vacations",
     album: "Days",
     year: 2015,
-    src: S + "day-dreamin.flac",
+    src: S + "day-dreamin.mp3",
     cover: S + "day-dreamin.jpg",
     dur: 115,
     crop: "translate(-31%,18%) scale(2.2)",
@@ -392,7 +393,7 @@ export const PLAYLIST: Song[] = [
     artist: "Surf Curse",
     album: "Sad Boys",
     year: 2015,
-    src: S + "forever-dumb.flac",
+    src: S + "forever-dumb.mp3",
     cover: S + "forever-dumb.jpg",
     dur: 258,
     crop: "translate(-4%,16%) scale(2)",

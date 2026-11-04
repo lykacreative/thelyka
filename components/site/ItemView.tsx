@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { itemDate, type SiteItem } from "@/lib/site-items";
+import { itemDate, viewSrc, type SiteItem } from "@/lib/site-items";
 import { ROUTE_EVENT, closeItem, routeKey, takeReturnFocus } from "@/lib/site/client";
 import { useSite } from "./SiteProvider";
 import { ArrowLeft, ArrowRight, BackArrow } from "./icons";
@@ -11,7 +11,9 @@ import { ArrowLeft, ArrowRight, BackArrow } from "./icons";
 const CAT: Record<SiteItem["category"], string> = { design: "Design", arts: "Art", reviews: "Reviews" };
 
 // One piece, full size, over whatever page you're on. Its address is the page's own plus #/<category>/<slug>,
-// so it can be shared, and Back (or Esc) puts you where you were.
+// so it can be shared, and Back (or Esc) puts you where you were. The picture is the original file; until it's in,
+// its box (sized from the stored size) shows the 1080p copy the crate, shelf or wall already loaded, and "loading…"
+// under it until that copy is in too.
 export function ItemView() {
   const { byKey } = useSite();
   const router = useRouter();
@@ -20,7 +22,7 @@ export function ItemView() {
   const info = useRef<HTMLDivElement>(null);
   const [item, setItem] = useState<SiteItem | null>(null);
   const [index, setIndex] = useState(0);
-  const [loaded, setLoaded] = useState(false);
+  const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
   const shown = useRef<SiteItem | null>(null);
 
   const route = useCallback(() => {
@@ -83,7 +85,7 @@ export function ItemView() {
     setIndex(((i % count) + count) % count);
   };
 
-  useEffect(() => setLoaded(false), [image?.src]);
+  const loaded = Boolean(image) && loadedSrc === image?.src;
 
   // Swipe between images (touch and pen).
   const swipe = useRef<{ x: number; y: number } | null>(null);
@@ -143,9 +145,15 @@ export function ItemView() {
                 src={image.src}
                 width={image.w}
                 height={image.h}
+                style={{
+                  ["--r" as string]: image.w / image.h,
+                  ["--w" as string]: `${image.w}px`,
+                  // see-through until the copy is in, so "loading…" shows through
+                  ...(loaded ? {} : { backgroundColor: "transparent", backgroundImage: `url("${viewSrc(image)}")` })
+                }}
                 alt={item.title + (many ? ` (${at + 1} of ${count})` : "")}
                 decoding="async"
-                onLoad={() => setLoaded(true)}
+                onLoad={() => setLoadedSrc(image.src)}
               />
             ) : null}
           </figure>
@@ -170,7 +178,7 @@ export function ItemView() {
             {item && many
               ? item.images.map((thumb, i) => (
                   <button key={`${thumb.src}-${i}`} type="button" aria-label={`Image ${i + 1}`} aria-current={i === at ? "true" : "false"} onClick={() => go(i)}>
-                    <img src={thumb.src} width={thumb.w} height={thumb.h} loading="lazy" decoding="async" alt="" />
+                    <img src={viewSrc(thumb, 200)} width={thumb.w} height={thumb.h} loading="lazy" decoding="async" alt="" />
                   </button>
                 ))
               : null}

@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { coverOf, formatDate, type SiteItem } from "@/lib/site-items";
+import { coverOf, formatDate, viewSrc, type SiteItem } from "@/lib/site-items";
 import { artSlugByType, artTypes, type ArtType } from "@/lib/art-types";
 import { openItem, reducedMotion, rng } from "@/lib/site/client";
 import { useSite } from "./SiteProvider";
@@ -338,7 +338,7 @@ export function ArtSection({ initialRoom = "All", syncPath = false, heading = "h
                 <span className="gf-wire" aria-hidden="true" />
                 <span className="gf-box">
                   <span className="gf-mat">
-                    <img src={im.src} width={im.w} height={im.h} loading="lazy" decoding="async" alt="" draggable={false} />
+                    <img src={viewSrc(im)} width={im.w} height={im.h} loading="lazy" decoding="async" alt="" draggable={false} />
                   </span>
                   <span className="gf-shade" aria-hidden="true" />
                 </span>

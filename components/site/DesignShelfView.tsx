@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { coverOf, formatDate, pad2, type SiteItem } from "@/lib/site-items";
+import { coverOf, formatDate, pad2, viewSrc, type SiteItem } from "@/lib/site-items";
 import { openItem } from "@/lib/site/client";
 import { music } from "@/lib/site/music";
 import { purr } from "@/lib/site/purr";
@@ -41,7 +41,7 @@ const Sleeve = memo(function Sleeve({ item, i, on, hidden, code }: { item: SiteI
   return (
     <li className="sp" hidden={hidden}>
       <button className={`spine${on ? " on" : ""}`} type="button" data-i={i} tabIndex={on ? 0 : -1} aria-label={`${item.title}, ${formatDate(item.date)}`}>
-        <img src={image.src} width={image.w} height={image.h} loading="lazy" decoding="async" alt="" draggable={false} />
+        <img src={viewSrc(image)} width={image.w} height={image.h} loading="lazy" decoding="async" alt="" draggable={false} />
         <span className="sp-code" aria-hidden="true">
           {code}
         </span>
@@ -340,7 +340,7 @@ export function DesignShelfView({ design, year, hidden }: Props) {
       </div>
       <article className="sh-pre" ref={preview}>
         <button className="sh-cover" type="button" aria-label="Open this design" onClick={() => item && openItem(item.key)}>
-          {cover && item ? <img key={cover.src} src={cover.src} width={cover.w} height={cover.h} alt={item.title} decoding="async" /> : null}
+          {cover && item ? <img key={cover.src} src={viewSrc(cover)} width={cover.w} height={cover.h} loading="lazy" alt={item.title} decoding="async" /> : null}
         </button>
         <div className="sh-info">
           <p className="sh-no">

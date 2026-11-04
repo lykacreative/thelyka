@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { coverOf, formatDate } from "@/lib/site-items";
+import { coverOf, formatDate, viewSrc } from "@/lib/site-items";
 import { reviewSlugByType, reviewTypes, type ReviewType } from "@/lib/review-types";
 import { rng } from "@/lib/site/client";
 import { useSite } from "./SiteProvider";
@@ -110,7 +110,7 @@ export function ReviewsSection({ initialType = "Movies", syncPath = false, headi
                 <button className="rv-btn" type="button" data-open={item.key} aria-label={item.title}>
                   <span className="tape a" />
                   <span className="tape b" />
-                  <img src={cover.src} width={cover.w} height={cover.h} loading="lazy" decoding="async" alt={item.title} />
+                  <img src={viewSrc(cover)} width={cover.w} height={cover.h} loading="lazy" decoding="async" alt={item.title} />
                 </button>
                 {c.code ? <span className="rv-code">{c.code}</span> : null}
                 <span className="rv-name">{c.name}</span>

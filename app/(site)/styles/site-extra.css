@@ -20,6 +20,11 @@
 .zpage .zn-bar{top:64px}
 .zn-body .zn-p{margin:0 0 1.15em}
 
+/* the pop-up sizes its picture from the stored size, so the box is right before the original is in and the 1080p
+   copy under it fills the same box (ItemView.tsx); a small picture still shows at its own size, never blown up */
+.iv-fig{container-type:size}
+.iv-fig img{width:min(100cqw,100cqh * var(--r),var(--w));height:auto;aspect-ratio:var(--r);background-size:100% 100%;background-repeat:no-repeat}
+
 /* the post's picture viewer is a real dialog (above the nav and the player) */
 dialog.lb{width:100%;height:100%;max-width:none;max-height:none;margin:0;padding:0;border:0}
 dialog.lb:not([open]){display:none}
@@ -90,6 +95,13 @@ dialog.lb::backdrop{background:rgba(14,11,22,.6)}
 /* a song's cover that isn't in yet when its look turns on waits hidden on the label and fades in (Player.tsx) */
 .pl-lbl img{transition:opacity .25s ease}
 .pl-lbl img.late{opacity:0}
+/* a song that's still coming in: the record and the bars hold still and a ring turns round the record until the
+   sound starts (Player.tsx); reduced motion: the ring stands still, whole */
+.pl-disc::before{content:"";position:absolute;inset:-3px;z-index:1;border-radius:50%;border:2.5px solid transparent;border-top-color:var(--pink);border-left-color:var(--pink);opacity:0;transition:opacity .2s;pointer-events:none}
+.player.skin .pl-disc::before{border-top-color:var(--s-acc);border-left-color:var(--s-acc)}
+.player.wait .pl-disc::before{opacity:1;animation:spin .9s linear infinite}
+.player.wait .pl-vinyl,.player.wait .viz i{animation-play-state:paused}
+@media (prefers-reduced-motion:reduce){.player.wait .pl-disc::before{animation:none;border-color:var(--pink);border-style:dashed}.player.skin.wait .pl-disc::before{border-color:var(--s-acc)}}
 .player.skin .pl-arm::before{background:var(--s-arm);border-color:var(--s-line)}
 .player.skin .pl-arm::after{background:var(--s-acc);border-color:var(--s-line)}
 .player.skin .pl-arm:hover::after,.player.skin .pl-arm.drag::after{background:color-mix(in srgb,var(--s-acc) 75%,#fff);box-shadow:0 0 0 3px color-mix(in srgb,var(--s-acc) 45%,transparent)}

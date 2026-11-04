@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { coverOf, formatDate, newestItem, type SiteItem } from "@/lib/site-items";
+import { coverOf, formatDate, newestItem, viewSrc, type SiteItem } from "@/lib/site-items";
 import { reducedMotion, rng } from "@/lib/site/client";
 import { useSite } from "./SiteProvider";
 import { DESIGN_YEAR_EVENT } from "./Hero";
@@ -56,7 +56,7 @@ function DesignWall({ design, years, hidden }: { design: SiteItem[]; years: stri
                     <button className="wcard" type="button" data-open={item.key} style={{ ["--r" as string]: `${tilt.get(item.key)}deg` }}>
                       {item.key === newest ? <span className="newest">newest</span> : null}
                       <span className="wimg">
-                        <img src={cover.src} width={cover.w} height={cover.h} loading="lazy" decoding="async" alt={item.title} />
+                        <img src={viewSrc(cover)} width={cover.w} height={cover.h} loading="lazy" decoding="async" alt={item.title} />
                       </span>
                       <span className="wt">{item.title}</span>
                       <span className="wd">{formatDate(item.date)}</span>
