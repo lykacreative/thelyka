@@ -187,7 +187,7 @@ function FeaturedCrate({ items }: { items: SiteItem[] }) {
         title="Featured"
         maxK={5}
         tabs
-        eager={6}
+        eager={1}
         onChange={(index) => setNow(index)}
         onOpen={(it) => openItem(it.key)}
       />

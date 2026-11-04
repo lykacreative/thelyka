@@ -304,7 +304,17 @@ export const Player = memo(function Player() {
       loadTrack(track + 1);
       if (was) audio.play().catch(() => {});
     });
-    on(audio, "play", () => setPlayingUI(true));
+    // a song still coming in: the record holds still with a ring turning round it until the sound starts
+    const setWait = (wait: boolean) => {
+      player.classList.toggle("wait", wait);
+      player.setAttribute("aria-busy", String(wait));
+    };
+    on(audio, "play", () => {
+      setPlayingUI(true);
+      setWait(audio.readyState < 3);
+    });
+    on(audio, "waiting", () => setWait(!audio.paused));
+    for (const type of ["playing", "pause", "ended", "error", "emptied"]) on(audio, type, () => setWait(false));
     on(audio, "pause", () => setPlayingUI(false));
     on(audio, "ended", () => {
       setPlayingUI(false);

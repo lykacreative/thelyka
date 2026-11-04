@@ -8,6 +8,7 @@ import {
   slugify,
   toSiteItems,
   coverOf,
+  viewSrc,
   cleanSiteNote,
   formatDate,
   itemDate,
@@ -121,6 +122,18 @@ test("site items: gallery images keep their stored size and the cover's place", 
   assert.equal(one.note, "");
   const [single] = toSiteItems([item({ title: "Single", variantDimensions: {} })]);
   assert.deepEqual(single.images, [{ src: "https://res.cloudinary.com/dgow1oztd/image/upload/v1/a.jpg", w: 1000, h: 1250 }]);
+});
+
+test("previews: Cloudinary's copy with the short side at 1080 px; small or non-Cloudinary pictures stay the original", () => {
+  const up = "https://res.cloudinary.com/demo/image/upload/";
+  const file = "v1793578505/thelyka/portfolio/design/2026/a.jpg";
+  assert.equal(viewSrc({ src: up + file, w: 4000, h: 5000 }), `${up}c_limit,w_1080,h_1350,q_auto:best,f_auto/${file}`);
+  assert.equal(viewSrc({ src: up + file, w: 3840, h: 2160 }), `${up}c_limit,w_1920,h_1080,q_auto:best,f_auto/${file}`);
+  assert.equal(viewSrc({ src: up + file, w: 1191, h: 1280 }), `${up}c_limit,w_1080,h_1161,q_auto:best,f_auto/${file}`);
+  assert.equal(viewSrc({ src: up + file, w: 1024, h: 1280 }), up + file);
+  assert.equal(viewSrc({ src: up + file, w: 1080, h: 1920 }), up + file);
+  assert.equal(viewSrc({ src: "/media/about.webp", w: 4000, h: 5000 }), "/media/about.webp");
+  assert.equal(viewSrc({ src: up + file, w: 1200, h: 1500 }, 200), `${up}c_limit,w_200,h_250,q_auto:best,f_auto/${file}`);
 });
 
 test("notes: leftover data references are dropped, real notes kept with line breaks", () => {

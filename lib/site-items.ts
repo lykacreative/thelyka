@@ -109,6 +109,19 @@ export function coverOf(item: SiteItem): SiteImage {
   return item.images[item.cover] ?? item.images[0];
 }
 
+// What a piece shows before it's opened (crate, shelf, walls): Cloudinary's copy with the short side at 1080 px,
+// made on the fly from the original, which is never changed and is what the pop-up shows. A picture that's already
+// that size or smaller, or isn't on Cloudinary, is the original file as it is. `short` 200 = the pop-up's thumbnails.
+const CLOUDINARY_UPLOAD = /^(https:\/\/res\.cloudinary\.com\/[^/]+\/image\/upload\/)(.+)$/;
+export function viewSrc(image: SiteImage, short = 1080): string {
+  const match = image.src.match(CLOUDINARY_UPLOAD);
+  const side = Math.min(image.w, image.h);
+  if (!match || !(side > short)) return image.src;
+  const w = Math.round((image.w * short) / side);
+  const h = Math.round((image.h * short) / side);
+  return `${match[1]}c_limit,w_${w},h_${h},q_auto:best,f_auto/${match[2]}`;
+}
+
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 // "2026-06-29" -> "29 Jun 2026". A missing or partial date shows what there is.

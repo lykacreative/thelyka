@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent } from "react";
-import { coverOf, pad2, type SiteItem } from "@/lib/site-items";
+import { coverOf, pad2, viewSrc, type SiteItem } from "@/lib/site-items";
 
 export type CrateEntry =
   | { kind: "item"; item: SiteItem }
@@ -288,7 +288,16 @@ export const Crate = forwardRef<CrateHandle, CrateProps>(function Crate(
                 <i />
               </span>
               <button className="face" type="button" tabIndex={k === 0 ? 0 : -1} aria-label={item.title}>
-                <img src={cover.src} width={cover.w} height={cover.h} loading={i < eager ? "eager" : "lazy"} decoding="async" alt={item.title} draggable={false} />
+                <img
+                  src={viewSrc(cover)}
+                  width={cover.w}
+                  height={cover.h}
+                  loading={i < eager ? "eager" : "lazy"}
+                  fetchPriority={i < eager ? undefined : "low"}
+                  decoding="async"
+                  alt={item.title}
+                  draggable={false}
+                />
                 <span className="face-open">Open</span>
               </button>
             </div>
