@@ -269,6 +269,20 @@ export function ItemEditor({ item, active, cloudinaryRoot, onSaved, onDeleted, o
     }
   }
 
+  // Hide / show right away, on its own: unsaved edits stay in the editor.
+  async function setHidden(hidden: boolean) {
+    setBusy(true);
+    try {
+      const result = await api<{ item: AdminItem }>(`/api/admin/items/${item.id}`, { method: "PATCH", body: { hidden } });
+      onSaved(result.item);
+      notify(hidden ? "Hidden. It stays here with its images, off the site. Show it again any time." : "Back on the site.", "ok");
+    } catch (error) {
+      setStatus({ kind: "error", message: error instanceof Error ? error.message : "That didn't save." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const removingCanDelete = removing ? isUnderFolder(removing.cloudinaryPublicId, cloudinaryRoot) : false;
   const shownStatus: SaveStatus = status.kind === "idle" && dirty ? { kind: "dirty" } : status;
 
@@ -386,6 +400,15 @@ export function ItemEditor({ item, active, cloudinaryRoot, onSaved, onDeleted, o
         <div className="min-w-0 flex-1 basis-40">
           <SaveState state={shownStatus} />
         </div>
+        <button
+          type="button"
+          className="a-btn"
+          onClick={() => void setHidden(!item.hidden)}
+          disabled={busy}
+          title={item.hidden ? "Put it back on the site" : "Take it off the site but keep it here"}
+        >
+          {item.hidden ? "Show on site" : "Hide from site"}
+        </button>
         <button type="button" className="a-btn a-btn--danger" onClick={() => setDeleting(true)} disabled={busy}>
           Delete item
         </button>

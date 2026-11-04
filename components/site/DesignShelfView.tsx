@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { coverOf, formatDate, pad2, type SiteItem } from "@/lib/site-items";
 import { openItem } from "@/lib/site/client";
 import { music } from "@/lib/site/music";
@@ -33,6 +33,22 @@ function syncRecords(ul: HTMLElement | null) {
     if (icon && icon.innerHTML !== shape) icon.innerHTML = shape;
   });
 }
+
+// One sleeve. Only the sleeve that comes out and the one that goes back redraw when the pointer moves along
+// the shelf (a whole year redrawing on every sleeve made the shelf stutter).
+const Sleeve = memo(function Sleeve({ item, i, on, hidden, code }: { item: SiteItem; i: number; on: boolean; hidden: boolean; code: string }) {
+  const image = coverOf(item);
+  return (
+    <li className="sp" hidden={hidden}>
+      <button className={`spine${on ? " on" : ""}`} type="button" data-i={i} tabIndex={on ? 0 : -1} aria-label={`${item.title}, ${formatDate(item.date)}`}>
+        <img src={image.src} width={image.w} height={image.h} loading="lazy" decoding="async" alt="" draggable={false} />
+        <span className="sp-code" aria-hidden="true">
+          {code}
+        </span>
+      </button>
+    </li>
+  );
+});
 
 // The Design section's Shelf view: the year's designs stand upright on shelves. Point at a sleeve to pull it
 // out (touch: tap), click to open it; arrow keys move along the shelf. A short year fills its shelf: the
@@ -296,19 +312,9 @@ export function DesignShelfView({ design, year, hidden }: Props) {
               pull(cur + step, true);
             }}
           >
-            {list.map((it, i) => {
-              const image = coverOf(it);
-              return (
-                <li className="sp" key={it.key} hidden={i >= cap}>
-                  <button className={`spine${i === cur ? " on" : ""}`} type="button" data-i={i} tabIndex={i === cur ? 0 : -1} aria-label={`${it.title}, ${formatDate(it.date)}`}>
-                    <img src={image.src} width={image.w} height={image.h} loading="lazy" decoding="async" alt="" draggable={false} />
-                    <span className="sp-code" aria-hidden="true">
-                      {codeOf(it)}
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
+            {list.map((it, i) => (
+              <Sleeve key={it.key} item={it} i={i} on={i === cur} hidden={i >= cap} code={codeOf(it)} />
+            ))}
           </ul>
         </div>
         <div className="sh-row">
@@ -332,7 +338,7 @@ export function DesignShelfView({ design, year, hidden }: Props) {
           <span className="ht">tap a sleeve to pull it out · tap it again to open it</span>
         </p>
       </div>
-      <article className="sh-pre" ref={preview} aria-live="polite">
+      <article className="sh-pre" ref={preview}>
         <button className="sh-cover" type="button" aria-label="Open this design" onClick={() => item && openItem(item.key)}>
           {cover && item ? <img key={cover.src} src={cover.src} width={cover.w} height={cover.h} alt={item.title} decoding="async" /> : null}
         </button>

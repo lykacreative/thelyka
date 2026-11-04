@@ -1,0 +1,3 @@
+/* The preview frame has no nav above the page, so the post's bar sticks to the top of the frame. */
+.zpage .zn-bar{top:0}
+.zine.zpage{min-height:100vh;min-height:100dvh}

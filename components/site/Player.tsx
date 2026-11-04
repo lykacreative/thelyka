@@ -5,21 +5,14 @@ import { memo, useEffect, useRef } from "react";
 import { reducedMotion, safeGet, safeSet } from "@/lib/site/client";
 import { music, type MusicTrack } from "@/lib/site/music";
 import { purr } from "@/lib/site/purr";
+import { PLAYLIST, inkOn, songCover, songLine, type Song } from "@/lib/site/playlist";
+import { doodleSvg } from "@/lib/site/doodles";
 
-// More songs can be added here; prev / next show up once there are two.
-const TRACKS = [
-  {
-    title: "cats in the cold",
-    artist: "mage tears",
-    album: "cats in the cold",
-    year: 2022,
-    src: "/media/cats-in-the-cold.flac",
-    cover: "/media/cats-in-the-cold-cover.jpg",
-    dur: 166
-  }
-];
+// The songs, in order (lib/site/playlist.ts); prev / next show up once there are two.
+const TRACKS = PLAYLIST;
 // what other controls see of each song (one object per song, so the shared store can tell a change)
-const SHARED: MusicTrack[] = TRACKS.map((t) => ({ title: t.title, artist: t.artist, cover: t.cover }));
+const SHARED: MusicTrack[] = TRACKS.map((t) => ({ title: t.title, artist: t.artist, cover: songCover(t) }));
+const LOOK_KEYS = ["paper", "ink", "acc", "btn", "cat"] as const;
 
 const POS_KEY = "lyka-player";
 const PLAY_D = "M6 3.5v13l11-6.5z";
@@ -70,6 +63,7 @@ export const Player = memo(function Player() {
     const grip = $<HTMLButtonElement>(".pl-grip");
     const elapsed = $(".pl-el");
     const total = $(".pl-tot");
+    const doodle = $(".pl-dd");
     const navEl = player.closest(".nav") as HTMLElement | null;
 
     let track = 0;
@@ -111,21 +105,120 @@ export const Player = memo(function Player() {
       scrub = false;
       player.classList.remove("scrub");
     };
-    function loadTrack(i: number) {
+    // Covers are loaded and decoded before they're needed (the next song's once the page has loaded, the songs either
+    // side of the one playing from the first time the player is pointed at or focused), one picture per song, kept. A song change then shows its cover in
+    // the same frame as its look; before, the label still showed the last song's cover for a beat while the new one
+    // (an original of up to 3000 px) loaded and decoded.
+    type Cover = { img: HTMLImageElement; ready: Promise<unknown>; done: boolean };
+    const covers = new Map<string, Cover>([[songCover(TRACKS[0]), { img: $<HTMLImageElement>(".pl-cover"), ready: Promise.resolve(), done: true }]]);
+    function coverFor(t: Song) {
+      const src = songCover(t);
+      let cover = covers.get(src);
+      if (!cover) {
+        const img = new Image(640, 640);
+        img.className = "pl-cover";
+        img.alt = "";
+        img.decoding = "async";
+        img.draggable = false;
+        img.fetchPriority = "high";
+        img.src = src;
+        const c: Cover = { img, ready: img.decode().catch(() => undefined), done: false };
+        void c.ready.then(() => (c.done = true));
+        covers.set(src, (cover = c));
+      }
+      return cover;
+    }
+    const warmAround = (i: number) => {
+      coverFor(TRACKS[(i + 1) % TRACKS.length]);
+      coverFor(TRACKS[(i - 1 + TRACKS.length) % TRACKS.length]);
+    };
+    on(player, "pointerenter", () => warmAround(track), { once: true });
+    on(player, "focusin", () => warmAround(track), { once: true });
+    const warmNext = () => later(() => coverFor(TRACKS[(track + 1) % TRACKS.length]), 1200);
+    if (document.readyState === "complete") warmNext();
+    else on(window, "load", warmNext, { once: true });
+    const wait = (ms: number) => new Promise<void>((resolve) => later(resolve, ms));
+    // a cover that takes longer than this (a slow connection) doesn't hold the song's look back: it shows when it's in
+    const coverReady = (t: Song) => Promise.race([coverFor(t).ready, wait(900)]);
+
+    // The song's look: its colours (Day and Night, read by the .skin rules in site-extra.css), its doodle, its
+    // words and its label. The first song keeps the player's own look.
+    function restyle(t: Song) {
+      player.dataset.song = t.id;
+      player.classList.toggle("skin", Boolean(t.day && t.night));
+      if (t.day && t.night) {
+        for (const [theme, look] of [["sd", t.day], ["sn", t.night]] as const) {
+          for (const key of LOOK_KEYS) player.style.setProperty(`--${theme}-${key}`, look[key]);
+          player.style.setProperty(`--${theme}-acc-ink`, inkOn(look.acc));
+          player.style.setProperty(`--${theme}-btn-ink`, inkOn(look.btn));
+          player.style.setProperty(`--${theme}-cat-ink`, inkOn(look.cat, "#2b2633", "#f4f1ea"));
+        }
+        player.style.setProperty("--sn-glow", t.night.glow);
+      }
+      doodle.innerHTML = doodleSvg(t.doodle);
+      $(".pl-title").textContent = t.title;
+      $(".pl-artist").textContent = songLine(t);
+      $(".pl-hint").textContent = `tap the record · drag the needle or the line to skip · the ${t.tab} tab moves me`;
+      const shown = $<HTMLImageElement>(".pl-cover");
+      const { img: cover, ready, done } = coverFor(t);
+      if (cover !== shown) shown.replaceWith(cover);
+      // a cover still on its way (a slow connection, quick presses) fades in when it's ready instead of drawing in
+      if (!done) {
+        cover.classList.add("late");
+        void ready.then(() => cover.classList.remove("late"));
+      }
+      // the first song keeps the stylesheet's crop of its cover; the others show their crop, or the whole cover
+      cover.style.transform = t.day ? (t.crop ?? "none") : "";
+    }
+    // A new song turns the player over: it dips, takes the song's look and cover together, comes back. It waits at
+    // the bottom of the dip only if the cover isn't ready yet. Pressing again mid-turn carries on from where it is.
+    const LOW = { opacity: 0.15, scale: "0.94", rotate: "-2.5deg" };
+    const UP = { opacity: 1, scale: "1", rotate: "0deg" };
+    let swapId = 0;
+    let dip: Animation | null = null;
+    let rise: Animation | null = null;
+    async function turnTo(t: Song) {
+      const id = ++swapId;
+      if (!dip) {
+        const now = getComputedStyle(player);
+        const from = { opacity: now.opacity, scale: now.scale, rotate: now.rotate };
+        rise?.cancel();
+        dip = player.animate([from, LOW], { duration: 190, easing: "cubic-bezier(.4,0,1,1)", fill: "forwards" });
+      }
+      await Promise.all([dip.finished.catch(() => undefined), coverReady(t)]);
+      if (id !== swapId) return;
+      restyle(t);
+      rise = player.animate([LOW, UP], { duration: 280, easing: "cubic-bezier(0,0,.2,1)" });
+      dip?.cancel();
+      dip = null;
+    }
+    function loadTrack(i: number, swap = true) {
       track = (i + TRACKS.length) % TRACKS.length;
       const t = TRACKS[track];
       if (audio.getAttribute("src") !== t.src) audio.src = t.src;
       music.set({ track: SHARED[track] });
-      $(".pl-title").textContent = t.title;
-      $(".pl-artist").textContent = t.artist + " · " + t.album + " · " + t.year;
-      const cover = $<HTMLImageElement>(".pl-cover");
-      if (cover.getAttribute("src") !== t.cover) cover.src = t.cover;
       seek.max = String(t.dur);
       total.textContent = mmss(t.dur);
       const many = TRACKS.length > 1;
       $<HTMLButtonElement>(".pl-prev").hidden = !many;
       $<HTMLButtonElement>(".pl-next").hidden = !many;
       paint(audio.currentTime || 0);
+      if (!swap) {
+        restyle(t);
+        return;
+      }
+      warmAround(track);
+      if (!reducedMotion() && !document.hidden) {
+        void turnTo(t);
+        return;
+      }
+      // reduced motion: straight to the new look, with its cover. A tab in the background (a song ending on its own
+      // there) runs no animations and decodes no pictures, so it takes the look now and the cover fades in on return.
+      const id = ++swapId;
+      dip?.cancel();
+      dip = null;
+      if (document.hidden) restyle(t);
+      else void coverReady(t).then(() => id === swapId && restyle(t));
     }
     function setPlayingUI(playing: boolean) {
       player.classList.toggle("playing", playing);
@@ -136,7 +229,7 @@ export const Player = memo(function Player() {
       if (!isMini()) disc.setAttribute("aria-label", playing ? "Pause the record" : "Play the record");
       paint(audio.currentTime || 0);
     }
-    loadTrack(0);
+    loadTrack(0, false);
     setPlayingUI(!audio.paused);
 
     // real seeking needs byte ranges; if the host can't give them, fall back to a blob of the same file
@@ -597,16 +690,17 @@ export const Player = memo(function Player() {
       <button className="pl-cat" type="button" aria-label="Pet the cat">
         <svg viewBox="0 0 46 40" aria-hidden="true">
           <path
+            className="c-body"
             d="M5 14 4 2l11 7c5-2 11-2 16 0l11-7-1 12c3 4 3 10 0 14-4 7-12 9-18 9S9 35 5 28c-2-4-2-10 0-14z"
             fill="#c9b6f0"
             stroke="#4b4658"
             strokeWidth="1.4"
             strokeLinejoin="round"
           />
-          <path d="M6 21h34M7 28h32" stroke="#4b4658" strokeWidth=".8" opacity=".45" />
-          <circle cx="12" cy="25" r="4" fill="#f2a6c0" opacity=".8" />
-          <circle cx="34" cy="25" r="4" fill="#f2a6c0" opacity=".8" />
-          <path d="M16 19h3M27 19h3M21 27l2-3 2 3" stroke="#3a3446" strokeWidth="1.3" fill="none" strokeLinecap="round" />
+          <path className="c-lines" d="M6 21h34M7 28h32" stroke="#4b4658" strokeWidth=".8" opacity=".45" />
+          <circle className="c-cheek" cx="12" cy="25" r="4" fill="#f2a6c0" opacity=".8" />
+          <circle className="c-cheek" cx="34" cy="25" r="4" fill="#f2a6c0" opacity=".8" />
+          <path className="c-face" d="M16 19h3M27 19h3M21 27l2-3 2 3" stroke="#3a3446" strokeWidth="1.3" fill="none" strokeLinecap="round" />
         </svg>
       </button>
       <span className="pl-doodle pl-moon" aria-hidden="true" />
@@ -619,13 +713,14 @@ export const Player = memo(function Player() {
           strokeLinejoin="round"
         />
       </svg>
+      <span className="pl-doodle pl-dd" aria-hidden="true" />
       <div className="pl-deck">
         <div className="pl-platter">
           <button className="pl-disc" type="button" aria-label="Show the music player">
             <span className="pl-vinyl">
               <span className="pl-rot">
                 <span className="pl-lbl">
-                  <img className="pl-cover" src={t.cover} width={640} height={640} alt="" decoding="async" draggable={false} />
+                  <img className="pl-cover" src={songCover(t)} width={640} height={640} alt="" decoding="async" draggable={false} />
                 </span>
               </span>
             </span>
@@ -638,7 +733,7 @@ export const Player = memo(function Player() {
       </div>
       <div className="pl-info">
         <p className="pl-title">{t.title}</p>
-        <p className="pl-artist">{`${t.artist} · ${t.album} · ${t.year}`}</p>
+        <p className="pl-artist">{songLine(t)}</p>
         <div className="pl-ctl">
           <button className="pl-btn sm pl-prev" type="button" aria-label="Previous song" hidden>
             <svg viewBox="0 0 20 20" aria-hidden="true">

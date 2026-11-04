@@ -50,6 +50,7 @@ export function toAdminItem(doc: PortfolioItemDoc): AdminItem {
     gallery,
     coverIndex: coverIndexOf(doc, gallery),
     featured: isFeaturedRank(doc.featured) ? doc.featured : null,
+    hidden: doc.hidden === true,
     updatedAt: isoDate(doc.updatedAt)
   };
 }

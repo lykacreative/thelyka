@@ -1,5 +1,5 @@
 // A blog post's text split into plain Markdown pieces and ":::split" image + text pieces. Shared by the admin
-// preview (components/BlogRenderer.tsx) and the public post page, so both read a post the same way.
+// preview and the public post page (components/site/ZineBody.tsx), so both read a post the same way.
 // Pure (no imports) so the tests can load it.
 
 export type BlogBlock =

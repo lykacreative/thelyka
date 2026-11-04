@@ -13,6 +13,8 @@ export type AdminItem = {
   gallery: GalleryImage[];
   coverIndex: number;
   featured: number | null;
+  /** Kept in the admin, off the site. */
+  hidden: boolean;
   updatedAt: string;
 };
 

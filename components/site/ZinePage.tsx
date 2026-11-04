@@ -10,8 +10,19 @@ type Picture = { src: string; alt: string; from: HTMLElement };
 
 // The fanzine pages (/blogs and each post): the post dialog's paper look as a page under the nav.
 // "Back" (or Esc) goes back when you came from inside the site, else to `fallback`. Every [data-zoom] picture
-// opens bigger in the viewer, in page order.
-export function ZinePage({ backLabel, fallback, children }: { backLabel: string; fallback: string; children: ReactNode }) {
+// opens bigger in the viewer, in page order. With `onBack` (the admin's preview), Back does that instead and Esc
+// only closes the viewer.
+export function ZinePage({
+  backLabel,
+  fallback,
+  onBack,
+  children
+}: {
+  backLabel: string;
+  fallback: string;
+  onBack?: () => void;
+  children: ReactNode;
+}) {
   const router = useRouter();
   const page = useRef<HTMLElement>(null);
   const viewer = useRef<HTMLDialogElement>(null);
@@ -20,13 +31,16 @@ export function ZinePage({ backLabel, fallback, children }: { backLabel: string;
   const swipe = useRef<{ x: number; y: number } | null>(null);
 
   const back = () => {
-    if (cameFromSite()) router.back();
+    if (onBack) onBack();
+    else if (cameFromSite()) router.back();
     else router.push(fallback);
   };
   const backRef = useRef(back);
   backRef.current = back;
 
+  const escBacks = !onBack;
   useEffect(() => {
+    if (!escBacks) return;
     const onKey = (event: KeyboardEvent) => {
       if (!isPlainEscape(event)) return;
       event.preventDefault();
@@ -34,7 +48,7 @@ export function ZinePage({ backLabel, fallback, children }: { backLabel: string;
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, []);
+  }, [escBacks]);
 
   const open = (from: HTMLElement) => {
     const buttons = [...(page.current?.querySelectorAll<HTMLElement>("[data-zoom]") ?? [])];
@@ -82,7 +96,7 @@ export function ZinePage({ backLabel, fallback, children }: { backLabel: string;
           <BackArrow />
           {backLabel}
         </button>
-        <span className="zn-esc">Esc</span>
+        {escBacks ? <span className="zn-esc">Esc</span> : null}
       </div>
       {children}
       <dialog

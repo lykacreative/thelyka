@@ -1,4 +1,5 @@
 import { unstable_cache } from "next/cache";
+import { calculateReadTime } from "@/lib/read-time";
 import { fixturesDir, readFixturePosts } from "@/lib/fixtures";
 import { isCloudinaryConfigured } from "@/lib/cloudinary";
 import { readLegacyBlogPosts } from "@/lib/blog-legacy";
@@ -18,10 +19,6 @@ export type BlogPost = {
   featured: boolean;
 };
 
-function calculateReadTime(content: string): number {
-  const words = content.trim().split(/\s+/).filter(Boolean).length;
-  return Math.max(1, Math.ceil(words / 200));
-}
 
 /**
  * All blog posts, newest first. Posts live in MongoDB (lib/blog-store.ts). Until the admin has copied the

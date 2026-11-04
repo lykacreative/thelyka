@@ -130,7 +130,10 @@ export function FeaturedPanel({ items, onItemsChange }: FeaturedPanelProps) {
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm">{item.title}</span>
-                    <span className="block truncate text-xs text-[var(--a-muted)]">{item.date || item.year}</span>
+                    <span className="block truncate text-xs text-[var(--a-muted)]">
+                      {item.date || item.year}
+                      {item.hidden ? " · hidden, so the homepage skips it" : ""}
+                    </span>
                   </span>
                   <span className="flex flex-none items-center">
                     <button type="button" className="a-btn a-btn--ghost a-btn--small !min-h-10 min-w-10 !px-2" aria-label="Move up" disabled={index === 0} onClick={() => move(index, index - 1)}>
@@ -181,7 +184,10 @@ export function FeaturedPanel({ items, onItemsChange }: FeaturedPanelProps) {
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm">{item.title}</span>
-                    <span className="block truncate text-xs text-[var(--a-muted)]">{item.date || item.year}</span>
+                    <span className="block truncate text-xs text-[var(--a-muted)]">
+                      {item.date || item.year}
+                      {item.hidden ? " · hidden" : ""}
+                    </span>
                   </span>
                   <span className="flex-none text-sm text-[var(--a-muted)]" aria-hidden="true">
                     + Add
