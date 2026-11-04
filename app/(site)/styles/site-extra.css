@@ -40,3 +40,98 @@ dialog.lb::backdrop{background:rgba(14,11,22,.6)}
 @media (min-width:681px){.sec.art .sec-empty{margin-left:auto;margin-right:auto}}
 .hero-crate .crate-empty{margin:clamp(24px,6vw,72px) auto 0;max-width:420px}
 .bx-none .bx-none-last{margin:0}
+
+/* ---------- the record player: a look per song ----------
+   Player.tsx gives every song after the first the class "skin" and its colours (lib/site/playlist.ts) as
+   --sd-* (Day) and --sn-* (Night). These rules read them through --s-*, so one set of rules draws every song. */
+.player.skin{
+  --s-paper:var(--sd-paper);--s-ink:var(--sd-ink);--s-acc:var(--sd-acc);--s-acc-ink:var(--sd-acc-ink);
+  --s-btn:var(--sd-btn);--s-btn-ink:var(--sd-btn-ink);--s-cat:var(--sd-cat);--s-cat-ink:var(--sd-cat-ink);
+  --s-line:var(--s-ink);
+  --s-hard:var(--s-ink);
+  --s-drop:color-mix(in srgb,var(--s-ink) 85%,transparent);
+  --s-glow:transparent;
+  --s-knob:color-mix(in srgb,var(--s-paper) 35%,#fffdf7);
+  --s-muted:color-mix(in srgb,var(--s-ink) 72%,var(--s-paper));
+  --s-raise:color-mix(in srgb,var(--s-btn) 35%,var(--s-paper));
+  --s-track:color-mix(in srgb,var(--s-btn) 55%,var(--s-paper));
+  --s-plat-a:color-mix(in srgb,var(--s-btn) 60%,var(--s-paper));
+  --s-plat-b:color-mix(in srgb,var(--s-plat-a) 92%,var(--s-ink));
+  --s-arm:color-mix(in srgb,var(--s-ink) 22%,var(--s-paper));
+  background:var(--grain),var(--s-paper);color:var(--s-ink);border-color:var(--s-line);
+  box-shadow:5px 6px 0 var(--s-drop),0 0 30px var(--s-glow)
+}
+[data-theme=night] .player.skin{
+  --s-paper:var(--sn-paper);--s-ink:var(--sn-ink);--s-acc:var(--sn-acc);--s-acc-ink:var(--sn-acc-ink);
+  --s-btn:var(--sn-btn);--s-btn-ink:var(--sn-btn-ink);--s-cat:var(--sn-cat);--s-cat-ink:var(--sn-cat-ink);
+  --s-line:color-mix(in srgb,var(--s-btn) 65%,var(--s-ink));
+  --s-hard:color-mix(in srgb,var(--s-paper) 45%,#000);
+  --s-drop:var(--s-hard);
+  --s-glow:var(--sn-glow);
+  --s-knob:var(--s-ink);
+  --s-muted:color-mix(in srgb,var(--s-ink) 78%,var(--s-paper));
+  --s-raise:color-mix(in srgb,var(--s-btn) 22%,var(--s-paper));
+  --s-track:color-mix(in srgb,var(--s-btn) 30%,var(--s-paper));
+  --s-plat-a:color-mix(in srgb,var(--s-btn) 22%,var(--s-paper));
+  --s-plat-b:color-mix(in srgb,var(--s-btn) 16%,var(--s-paper));
+  --s-arm:color-mix(in srgb,var(--s-btn) 55%,var(--s-paper));
+  background:var(--grain-l),var(--s-paper)
+}
+.player.skin:hover{box-shadow:6px 8px 0 var(--s-drop),0 0 36px var(--s-glow)}
+.player.skin.moving{box-shadow:12px 16px 0 color-mix(in srgb,var(--s-drop) 50%,transparent),0 0 40px var(--s-glow)}
+.player.skin .pl-grip{background:var(--s-acc);border-color:var(--s-line);box-shadow:2px 2px 0 var(--s-hard),0 0 12px var(--s-glow)}
+.player.skin .pl-grip span{background-image:radial-gradient(circle,var(--s-acc-ink) 1.4px,transparent 1.8px)}
+.player.skin .pl-grip:hover{background:color-mix(in srgb,var(--s-acc) 72%,#fff)}
+.player.skin .pl-platter{background:repeating-linear-gradient(90deg,var(--s-plat-a) 0 3px,var(--s-plat-b) 3px 6px);border-color:var(--s-line)}
+.player.skin .pl-disc:hover{box-shadow:0 0 0 3px var(--s-acc),0 4px 12px rgba(0,0,0,.25)}
+.player.skin.scratching .pl-disc{box-shadow:0 0 0 3px var(--s-acc),0 0 0 7px color-mix(in srgb,var(--s-acc) 35%,transparent)}
+.player.skin .pl-rot::after{background:var(--s-paper)}
+.player.skin .pl-lbl{background:var(--s-raise)}
+.player.skin .pl-arm::before{background:var(--s-arm);border-color:var(--s-line)}
+.player.skin .pl-arm::after{background:var(--s-acc);border-color:var(--s-line)}
+.player.skin .pl-arm:hover::after,.player.skin .pl-arm.drag::after{background:color-mix(in srgb,var(--s-acc) 75%,#fff);box-shadow:0 0 0 3px color-mix(in srgb,var(--s-acc) 45%,transparent)}
+.player.skin .pl-arm:hover::before,.player.skin .pl-arm.drag::before{background:color-mix(in srgb,var(--s-arm) 70%,#fff)}
+.player.skin .pl-arm i{background:var(--s-paper);border-color:var(--s-line)}
+.player.skin .pl-artist,.player.skin .pl-time,.player.skin .pl-hint{color:var(--s-muted)}
+.player.skin .pl-btn{background:var(--s-btn);color:var(--s-btn-ink);border-color:var(--s-line);box-shadow:2px 2px 0 var(--s-hard),0 0 12px var(--s-glow)}
+.player.skin .pl-btn.sm,.player.skin .pl-min,.player.skin .pl-dock{background:var(--s-raise);color:var(--s-ink);border-color:var(--s-line);box-shadow:2px 2px 0 var(--s-hard)}
+.player.skin .pl-btn:hover,.player.skin .pl-min:hover,.player.skin .pl-dock:hover{background:var(--s-acc);color:var(--s-acc-ink)}
+.player.skin .pl-btn:active,.player.skin .pl-min:active,.player.skin .pl-dock:active{box-shadow:0 0 0 var(--s-hard)}
+.player.skin .viz i{background:color-mix(in srgb,var(--s-btn) 50%,var(--s-ink));box-shadow:0 0 6px var(--s-glow)}
+.player.skin .viz i:nth-child(2),.player.skin .viz i:nth-child(4){background:var(--s-acc)}
+.player.skin input.pl-seek::-webkit-slider-runnable-track{background:linear-gradient(90deg,var(--s-acc) var(--p),var(--s-track) var(--p));border-color:var(--s-line)}
+.player.skin input.pl-seek::-webkit-slider-thumb{background:var(--s-knob);border-color:var(--s-hard);box-shadow:1px 1px 0 var(--s-hard)}
+.player.skin input.pl-seek:hover::-webkit-slider-thumb,.player.skin input.pl-seek:active::-webkit-slider-thumb{background:var(--s-acc)}
+.player.skin input.pl-seek::-moz-range-track{background:var(--s-track);border-color:var(--s-line)}
+.player.skin input.pl-seek::-moz-range-progress{background:var(--s-acc)}
+.player.skin input.pl-seek::-moz-range-thumb{background:var(--s-knob);border-color:var(--s-hard)}
+.player.skin .pl-bubble{background:var(--s-ink);color:var(--s-paper)}
+.player.skin .pl-bubble::after{border-top-color:var(--s-ink)}
+/* the cat in the song's colours (the first song keeps the lilac cat) */
+.player.skin .pl-cat .c-body{fill:var(--s-cat);stroke:var(--s-cat-ink)}
+.player.skin .pl-cat .c-lines{stroke:var(--s-cat-ink)}
+.player.skin .pl-cat .c-face{stroke:var(--s-cat-ink)}
+.player.skin .pl-cat .c-cheek{fill:color-mix(in srgb,var(--s-acc) 55%,#f2a6c0)}
+.player.skin .pl-cat svg{filter:drop-shadow(0 0 6px var(--s-glow))}
+/* the song's doodles along the top, in place of the first song's moon and stars */
+.player.skin .pl-moon,.player.skin .pl-stars{display:none}
+.pl-dd{left:84px;top:-17px;width:150px;height:26px;color:var(--s-ink,currentColor);opacity:.85}
+.pl-dd svg{display:block;width:100%;height:100%;overflow:visible}
+.pl-dd:empty{display:none}
+.player:hover .pl-dd{transform:translateY(-2px) rotate(-1.5deg)}
+[data-theme=night] .pl-dd{opacity:1;filter:drop-shadow(0 0 4px var(--s-glow,transparent))}
+@media (min-width:900px){
+  .player.skin.mini:not(.float){box-shadow:2px 3px 0 var(--s-drop),0 0 18px var(--s-glow)}
+}
+/* small: only the next button, so the song name keeps its room */
+.player.mini .pl-prev{display:none}
+.player.mini .pl-btn.sm{width:32px;height:32px}
+.player.mini .pl-btn.sm svg{width:14px;height:14px}
+/* a new song turns the player over: it dips, takes the new look halfway (Player.tsx), comes back */
+.player.swap{animation:plSwap .47s cubic-bezier(.4,0,.2,1)}
+@keyframes plSwap{
+  0%{opacity:1;scale:1;rotate:0deg}
+  40%{opacity:.15;scale:.94;rotate:-2.5deg}
+  100%{opacity:1;scale:1;rotate:0deg}
+}
+@media (prefers-reduced-motion:reduce){.player.swap{animation:none}}

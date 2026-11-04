@@ -21,6 +21,9 @@ import { parseBlogBlocks } from "../lib/blog-blocks.ts";
 import { music } from "../lib/site/music.ts";
 import { purrSamples, purr, PURR_SECONDS } from "../lib/site/purr.ts";
 import { rng } from "../lib/site/client.ts";
+import { PLAYLIST, songLine, inkOn, drawnLabel, songCover } from "../lib/site/playlist.ts";
+import { DOODLES, doodleSvg } from "../lib/site/doodles.ts";
+import { readFileSync, statSync } from "node:fs";
 
 const post = (slug: string, date: string, featured?: boolean) => ({ slug, date, featured });
 
@@ -315,4 +318,50 @@ test("purr: a soft two-breath rumble about 25 pulses a second, and silent outsid
   assert.deepEqual(purrSamples(rate, rng(7)).subarray(9000, 9010), s.subarray(9000, 9010));
   // no window (the server): nothing plays
   assert.equal(purr(), 0);
+});
+
+// ---------------------------------------------------------------- the player's playlist
+
+test("playlist: every song and cover is in public/media, ids are unique, each song after the first has its own look", () => {
+  assert.ok(PLAYLIST.length >= 2);
+  assert.equal(new Set(PLAYLIST.map((s) => s.id)).size, PLAYLIST.length);
+  const hex = /^#[0-9a-f]{6}$/;
+  PLAYLIST.forEach((song, i) => {
+    assert.match(song.id, /^[a-z0-9-]+$/);
+    for (const file of [song.src, song.cover].filter((f): f is string => Boolean(f))) {
+      assert.ok(file.startsWith("/media/"), file);
+      assert.ok(statSync("public" + file).size > 1000, `${file} is missing or empty`);
+    }
+    if (song.cover) {
+      const head = readFileSync("public" + song.cover).subarray(0, 4).toString("hex");
+      assert.ok(head.startsWith("ffd8ff") || head === "89504e47", `${song.cover} is not a jpg or png`);
+    }
+    assert.ok(song.dur > 30 && song.tab.length > 0);
+    if (i === 0) {
+      // the first song keeps the player's own look: no colours, the moon and stars
+      assert.equal(song.day, undefined);
+      assert.equal(doodleSvg(song.doodle), "");
+      return;
+    }
+    for (const look of [song.day, song.night]) {
+      assert.ok(look, song.id);
+      for (const value of [look.paper, look.ink, look.acc, look.btn, look.cat]) assert.match(value, hex, song.id);
+    }
+    assert.match(song.night!.glow, /^rgba\(/);
+    assert.ok(DOODLES[song.doodle], `${song.id}: no doodle ${song.doodle}`);
+    assert.match(doodleSvg(song.doodle), /^<svg viewBox="0 0 150 26"/);
+  });
+});
+
+test("playlist: its words, inks and drawn labels", () => {
+  assert.equal(songLine({ ...PLAYLIST[0] }), "mage tears · cats in the cold · 2022");
+  assert.equal(songLine({ ...PLAYLIST[0], album: undefined, year: undefined }), "mage tears");
+  assert.equal(inkOn("#fffaf0"), "#1a1720");
+  assert.equal(inkOn("#111111"), "#fbf7ef");
+  const bare = { ...PLAYLIST[1], cover: null, title: 'A & "B" <c>' };
+  const label = decodeURIComponent(drawnLabel(bare));
+  assert.ok(label.startsWith("data:image/svg+xml,<svg"));
+  assert.ok(label.includes("A &amp; &quot;B&quot; &lt;c&gt;"));
+  assert.equal(songCover(bare), drawnLabel(bare));
+  assert.equal(songCover(PLAYLIST[1]), PLAYLIST[1].cover);
 });
